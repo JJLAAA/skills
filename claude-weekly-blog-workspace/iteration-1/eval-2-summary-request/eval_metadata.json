@@ -1,0 +1,6 @@
+{
+  "eval_id": 2,
+  "eval_name": "summary-request",
+  "prompt": "claude.com/blog 本周有什么更新吗？给我总结一下",
+  "assertions": []
+}

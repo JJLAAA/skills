@@ -1,0 +1,6 @@
+{
+  "eval_id": 1,
+  "eval_name": "chinese-prompt",
+  "prompt": "帮我看看 Claude 博客这周发了什么新文章",
+  "assertions": []
+}

@@ -1,0 +1,23 @@
+{
+  "skill_name": "openai-weekly-blog",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我看看 OpenAI 本周发布了哪些技术博客，我想了解最新的研究进展",
+      "expected_output": "Should fetch RSS, filter for this week's Research/Engineering articles, provide Chinese summaries with links",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "OpenAI this week published anything interesting in research or engineering?",
+      "expected_output": "Should fetch RSS, filter for this week's Research/Engineering articles, provide Chinese summaries with links",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "给我汇总一下 openai 这周的 research 文章，我要决定精读哪篇",
+      "expected_output": "Should fetch RSS, filter for Research category only this week, provide summaries to help user decide what to read",
+      "files": []
+    }
+  ]
+}

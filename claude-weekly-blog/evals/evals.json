@@ -1,0 +1,23 @@
+{
+  "skill_name": "claude-weekly-blog",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我看看 Claude 博客这周发了什么新文章",
+      "expected_output": "Should fetch claude.com/blog, filter posts by current week (Beijing time), and provide Chinese summaries with links. If no posts this week, should say so.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "claude.com/blog 本周有什么更新吗？给我总结一下",
+      "expected_output": "Should calculate current week range, fetch blog posts, filter by date, and provide structured output with 20-30 char summaries in Chinese.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I want to know what Claude published on their blog this week",
+      "expected_output": "Should work with English prompt, fetch posts, filter by Beijing time week range, and output in Chinese with proper formatting.",
+      "files": []
+    }
+  ]
+}
