@@ -457,43 +457,109 @@ ARTICLES TO ANALYZE (Group [X] of [total]):
 
 [... continue for all articles in this group ...]
 
-CRITICAL INSTRUCTIONS - Use context-mode MCP tools for efficiency:
+CRITICAL INSTRUCTIONS - Use the SAME analysis methodology as Single Article Mode:
 
 For EACH article:
 
-Step 1: Fetch and index article content (avoids loading full content into context)
-- Use ctx_fetch_and_index tool:
-  ctx_fetch_and_index(
-      url="[article-url]",
-      source="Article: [title]"
-  )
-- This indexes the content and returns a preview (~3KB)
+Step 1: Fetch and index article content
+- Use ctx_fetch_and_index(url="[article-url]", source="Article: [title]")
+- Returns ~3KB preview, full content indexed
 
 Step 2: Extract key information using ctx_search
-- Search for specific information needed for analysis:
-  ctx_search(
-      queries=[
-          "main technical problem and solution",
-          "architecture design and patterns",
-          "implementation details and metrics",
-          "key insights and innovations"
-      ],
-      source="Article: [title]",
-      limit=5
-  )
+- ctx_search(queries=["article structure and main points", "technical details and metrics", "author arguments and evidence"], source="Article: [title]", limit=5)
 
-Step 3: Generate complete analysis based on search results
-- Follow the type-specific template from SKILL.md
-- Use Chinese with English technical terms preserved
-- Include all required sections
+Step 3: Identify article type (SAME as Single Article Mode STEP 2)
+Determine which type:
+- **技术观点文**: 提出明确主张、有对比论证
+- **教程/实操文**: 分步骤指引、有代码示例
+- **经验分享文**: 项目复盘、踩坑记录
+- **工具介绍文**: 功能介绍、使用方法
 
-Step 4: Export to markdown file
-- Use Write tool: Write(file_path="[OUTPUT_DIRECTORY]/[target-file]", content="[analysis]")
-- Verify file creation
+Step 4: Generate analysis using type-specific template (SAME as Single Article Mode STEP 3)
 
-Step 5: Move to next article
-- Process all articles sequentially
-- Do not skip any articles
+For 技术观点文, use this template:
+```markdown
+## 文章元信息
+- 标题：
+- 作者：
+- 发表时间：
+- 原文链接：
+
+## 一句话总结
+
+## SCQA 脉络
+- **Situation（情境）**：
+- **Complication（冲突）**：
+- **Question（问题）**：
+- **Answer（答案）**：
+
+## 核心论点拆解
+### 论点 1：[论点名称]
+- **主张**：
+- **论据**：
+- **推理逻辑**：[强/中/弱]
+
+## 关键数据与证据
+
+## 批判性评价
+### 论证强项
+### 论证弱项 / 可商榷之处
+### 被忽略的视角
+
+## 适用边界
+- **成立条件**：
+- **不成立条件**：
+
+## 行动建议
+- **可以立即应用的点**：
+- **需要进一步验证的点**：
+
+## 延伸思考
+```
+
+For 教程/实操文:
+```markdown
+## 文章元信息
+## 一句话总结
+## 知识结构
+- **目标**：
+- **前置知识**：
+- **核心步骤**：
+- **关键产出**：
+## 技术要点
+## 实操可行性评估
+## 行动建议
+```
+
+For 经验分享文:
+```markdown
+## 文章元信息
+## 一句话总结
+## 背景与上下文
+## 核心经验提炼
+### 经验 1：
+- **内容**：
+- **支撑案例**：
+- **可迁移性**：
+## 批判性评价
+## 行动建议
+```
+
+For 工具介绍文:
+```markdown
+## 文章元信息
+## 一句话总结
+## 工具概览
+## 优劣势分析
+## 适用场景
+## 同类对比
+## 行动建议
+```
+
+Step 5: Export to markdown file
+- Write(file_path="[OUTPUT_DIRECTORY]/[target-file]", content="[complete analysis]")
+
+Step 6: Move to next article
 
 COMPLETION:
 After analyzing ALL articles in your group:
