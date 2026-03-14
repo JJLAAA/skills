@@ -1,25 +1,24 @@
 const https = require('https');
 
-// 获取本周范围：从最近的周日到周六
-const now = new Date();
-const dayOfWeek = now.getDay();
-
-// 如果今天是周日到周六，找到本周的周日
-let weekStart = new Date(now);
-weekStart.setDate(now.getDate() - dayOfWeek);
-weekStart.setHours(0, 0, 0, 0);
-
-// 本周六
-let weekEnd = new Date(weekStart);
-weekEnd.setDate(weekStart.getDate() + 6);
-weekEnd.setHours(23, 59, 59, 999);
-
-// 如果今天是周日之后，且周还没结束，使用上一周
-if (dayOfWeek > 0 && now < weekEnd) {
-  // 当前周还在进行中，使用上一周的完整周
-  weekStart.setDate(weekStart.getDate() - 7);
-  weekEnd.setDate(weekEnd.getDate() - 7);
+// 从命令行参数获取日期，格式 YYYYMMDD（如 20260314）
+const dateArg = process.argv[2];
+if (!dateArg || !/^\d{8}$/.test(dateArg)) {
+  console.error(JSON.stringify({ error: '请提供日期参数，格式为 YYYYMMDD，例如：node fetch_weekly.js 20260314' }));
+  process.exit(1);
 }
+
+// 解析输入日期作为结束日期
+const year = parseInt(dateArg.slice(0, 4));
+const month = parseInt(dateArg.slice(4, 6)) - 1; // 0-indexed
+const day = parseInt(dateArg.slice(6, 8));
+
+let weekEnd = new Date(year, month, day, 23, 59, 59, 999);
+
+// 找到该日期所在周的周日作为开始日期
+const dayOfWeek = weekEnd.getDay(); // 0=Sunday, 6=Saturday
+let weekStart = new Date(weekEnd);
+weekStart.setDate(weekEnd.getDate() - dayOfWeek);
+weekStart.setHours(0, 0, 0, 0);
 
 https.get('https://openai.com/news/rss.xml', (res) => {
   let data = '';

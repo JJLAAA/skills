@@ -20,6 +20,12 @@ Trigger when the user:
 
 From the user's input or URL, extract the subreddit name (e.g., "AgentsOfAI", "ClaudeCode").
 
+**If no subreddit name can be identified**, stop immediately and ask the user:
+
+> 请问您想分析哪个 subreddit？例如：`AgentsOfAI`、`ClaudeCode`、`MachineLearning` 等。
+
+Do not proceed to any subsequent steps until the user provides a subreddit name.
+
 ### 2. Fetch Posts Using JSON Endpoint (Primary Method)
 
 Try to fetch posts directly from Reddit's JSON API without authentication:

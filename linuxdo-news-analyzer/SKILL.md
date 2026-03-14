@@ -1,12 +1,14 @@
 ---
 name: linuxdo-news-analyzer
 description: >-
-  专门分析 linux.do 社区今日新闻的工具。通过 Discourse JSON API 获取带时间戳的帖子列表，
-  按北京时间（UTC+8）过滤当天新闻，逐篇读取详情页并输出结构化概述。
-  当用户说"分析 linux.do 今天的新闻"、"linux.do 今日快讯"或类似请求时使用。
+  专门分析 linux.do 社区指定日期新闻的工具。通过 Discourse JSON API 获取带时间戳的帖子列表，
+  按北京时间（UTC+8）过滤指定日期的新闻，逐篇读取详情页并输出结构化概述。
+  调用时必须由用户显式传入要分析的北京时间日期（格式 YYYY-MM-DD）。
+  当用户说"分析 linux.do YYYY-MM-DD 的新闻"、"linux.do 今日快讯"、"linux.do 前沿快讯"、
+  "/linuxdo-news-analyzer YYYY-MM-DD" 或类似请求时使用。
 metadata:
   author: leo
-  version: "2.6"
+  version: "2.7"
   category: news
 ---
 
@@ -14,24 +16,35 @@ metadata:
 
 ## Overview
 
-专门用于分析 linux.do 社区今日新闻的 skill。核心设计原则：
+专门用于分析 linux.do 社区指定日期新闻的 skill。核心设计原则：
 
-- **北京时间日期过滤**：使用 Discourse JSON API 的 `created_at` 字段，按北京时间（UTC+8）判断"今天"，避免遗漏北京时间凌晨发布的帖子
+- **用户显式传入日期**：日期由用户在调用命令时明确指定（北京时间 YYYY-MM-DD），不依赖系统 `currentDate`，避免因系统时区或跨日边界导致日期判断错误
+- **精确双边界过滤**：同时设置起始和结束 UTC 时间，确保只取指定北京时间日期的帖子，不会混入前一天或后一天的内容
 - **逐篇读取详情**：每篇新闻都访问其详情 API，提取楼主正文，不只依赖列表页标题
-- **结构化输出**：按分类整理，附北京时间、浏览量、回复数，最后给出今日总结
-- **Token 优化**：列表页一次获取所有信息，详情页批量抓取，避免重复导航开销
+- **结构化输出**：按分类整理，附北京时间、浏览量、回复数，最后给出总结
+- **Token 优化**：列表页一次获取所有信息，详情页批量 fetch，避免重复导航开销
 
 ## When to Use This Skill
 
 用户说以下内容时触发：
-- "分析 linux.do 今天的新闻"
-- "linux.do 今日快讯"
+- `/linuxdo-news-analyzer 2026-03-12`（最标准调用，日期为北京时间）
+- "分析 linux.do 2026-03-12 的新闻"
+- "linux.do 今日快讯"（此时需先问用户确认日期，或提示用户提供日期）
 - "看看 linux.do 前沿快讯"
-- `/linuxdo-news-analyzer`
 
 ## Workflow
 
-### STEP 1: 获取今日新闻列表（北京时间）
+### STEP 0: 确认目标日期（北京时间）
+
+**日期必须由用户显式提供**，不要自行猜测或从系统上下文推断。
+
+- 如果用户在命令参数或消息中包含了日期（如 `2026-03-12`、`3月12日`），直接使用该日期。
+- 如果用户没有提供日期（如只说"分析今天的新闻"），**在执行任何抓取之前先向用户确认**：
+  > "请问您想分析哪一天的新闻？（北京时间，格式：YYYY-MM-DD）"
+
+确定日期后，在整个 workflow 中用变量 `TARGET_DATE`（格式 `YYYY-MM-DD`）表示，例如 `2026-03-12`。
+
+### STEP 1: 获取指定日期新闻列表
 
 使用 chrome-devtools 工具打开列表页：
 
@@ -39,25 +52,25 @@ metadata:
 new_page("https://linux.do/c/news/34.json")
 ```
 
-**关键：按北京时间过滤**
+**关键：按北京时间精确双边界过滤**
 
-北京时间 = UTC+8，所以北京时间今天的帖子对应的 UTC 时间范围是：
-- 北京时间 00:00 = UTC 前一天 16:00
-- 北京时间 23:59 = UTC 当天 15:59
+北京时间（UTC+8）`TARGET_DATE` 对应的 UTC 范围：
+- 起始：`TARGET_DATE 00:00:00 CST` = `TARGET_DATE 前一天 16:00:00 UTC`
+- 结束（不含）：`TARGET_DATE 23:59:59 CST` = `TARGET_DATE 当天 15:59:59 UTC`
 
-然后使用 evaluate_script 提取并过滤今日新闻：
+用 evaluate_script 过滤，将 `TARGET_DATE` 替换为实际日期（如 `2026-03-12`）：
 
 ```js
 () => {
   const raw = document.body.innerText;
   const data = JSON.parse(raw);
 
-  // 北京时间今天00:00对应的UTC时间（使用当前日期）
-  const todayStartUTC = new Date('2026-03-08T00:00:00.000+08:00').toISOString();
+  // 精确双边界：北京时间 TARGET_DATE 00:00 ~ 23:59:59
+  const startUTC = new Date('TARGET_DATE T00:00:00.000+08:00').toISOString();
+  const endUTC   = new Date('TARGET_DATE T23:59:59.999+08:00').toISOString();
 
-  // 过滤今日帖子
   const topics = data.topic_list.topics
-    .filter(t => t.created_at >= todayStartUTC)
+    .filter(t => t.created_at >= startUTC && t.created_at <= endUTC)
     .map(t => ({
       id: t.id,
       title: t.title,
@@ -67,24 +80,25 @@ new_page("https://linux.do/c/news/34.json")
     }))
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-  return { count: topics.length, topics };
+  return { count: topics.length, topics, startUTC, endUTC };
 }
 ```
 
-> ⚠️ 记得将日期 '2026-03-08' 替换为当前日期
+> ⚠️ `TARGET_DATE T00:00:00.000+08:00` 中的 `T` 是 ISO 8601 分隔符，不要省略，完整示例：`'2026-03-12T00:00:00.000+08:00'`
+
+> ⚠️ 必须同时设置 startUTC **和** endUTC，缺少结束边界会把次日凌晨的帖子也混入结果
 
 > ⚠️ 必须用 `created_at` 过滤，不能用 `bumped_at`（后者会包含有新回复的旧帖）
-> ⚠️ 必须按北京时间过滤，不能直接用 UTC 日期字符串匹配，否则会漏掉北京时间凌晨（UTC前一天下午）发布的帖子
 
 ### ⏹️ 空列表检查
 
 **如果 STEP 1 返回空列表**，直接输出以下内容并结束任务：
 
 ```
-📢 今日（{YYYY-MM-DD}）linux.do 前沿快讯版块尚无新帖发布，请稍后再试。
+📢 {TARGET_DATE}（北京时间）linux.do 前沿快讯版块尚无新帖发布，请稍后再试。
 ```
 
-**不要**显示昨天或其他时间的帖子作为备选。
+**不要**显示其他日期的帖子作为备选。
 
 ### STEP 2: 批量抓取详情
 
@@ -234,7 +248,7 @@ function calculateContentScore(post) {
 #### 输出模板
 
 ```markdown
-# 今日前沿快讯详情概述 - {YYYY-MM-DD}（北京时间）
+# linux.do 前沿快讯 - {TARGET_DATE}（北京时间）
 
 ---
 
@@ -246,9 +260,9 @@ function calculateContentScore(post) {
 
 ---
 
-## 💎 今日总结
+## 💎 总结
 
-{3-5句话，提炼今日主要主题和关键洞察}
+{3-5句话，提炼当日主要主题和关键洞察}
 ```
 
 ## Token 优化总结
@@ -288,7 +302,11 @@ function calculateContentScore(post) {
 
 ## 更新日志
 
-### v2.6 (2026-03-08)
+### v2.7 (2026-03-12)
+- **重大改动**：移除依赖系统 `currentDate` 的"今日"判断，改为用户显式传入 `TARGET_DATE`
+- **新增 STEP 0**：若用户未提供日期，先询问确认，避免日期猜测错误
+- **修复过滤逻辑**：新增结束边界 `endUTC`，精确限定为指定北京时间日期的 00:00~23:59:59，防止次日帖子混入
+- 更新 description、触发词、输出模板标题，统一使用 `TARGET_DATE` 而非"今日"
 - **关键说明**：明确禁止使用 WebFetch 和 curl 工具访问 linux.do
 - **原因**：linux.do 需要登录态，这两个工具无法访问，只会超时浪费 token
 - **唯一正确方式**：使用 chrome-devtools 工具（new_page + evaluate_script）

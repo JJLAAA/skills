@@ -1,69 +1,55 @@
 ---
 name: openai-weekly-blog
-description: Analyzes OpenAI's weekly blog posts from their RSS feed. Triggers when users ask about "OpenAI blog this week", "OpenAI weekly articles", "latest OpenAI Research/Engineering posts", "OpenAI 本周博客", or want to see what OpenAI published recently. Filters for Research and Engineering categories only, provides 20-30 character summaries in Chinese, and covers the current week (last Sunday to this Saturday, Beijing time).
+description: Analyzes OpenAI's weekly blog posts from their RSS feed. Triggers when users ask about "OpenAI blog this week", "OpenAI weekly articles", "latest OpenAI Research/Engineering posts", "OpenAI 本周博客", or provide a date like "20260314" to filter that week's articles. Filters for Research and Engineering categories only, provides 20-30 character summaries in Chinese.
 ---
 
 # OpenAI Weekly Blog Analyzer
 
-Fetch and analyze OpenAI's blog posts from the current week, focusing on Research and Engineering articles.
+Fetch and analyze OpenAI's blog posts for a user-specified week, focusing on Research and Engineering articles.
 
 ## What this skill does
 
-1. Fetches OpenAI's RSS feed from https://openai.com/news/rss.xml
-2. Filters articles published this week (last Sunday 00:00 to this Saturday 23:59, Beijing time UTC+8)
-3. Only includes articles with category "Research" or "Engineering"
-4. Generates a 20-30 character Chinese summary for each article
-5. Outputs formatted list with title, category, publish time, summary, and link
+1. Asks the user for a date in `YYYYMMDD` format if not already provided (e.g. `20260314`)
+2. Treats the input date as the **end date** of the week; the start date is the Sunday of the same week
+3. Fetches OpenAI's RSS feed from https://openai.com/news/rss.xml
+4. Filters articles published between [Sunday of that week] and [input date], Research/Engineering categories only
+5. Generates a 20-30 character Chinese summary for each article
+6. If no articles found, simply informs the user — no historical fallback
 
-## Time range calculation
+## How to calculate the week range
 
-The "current week" is defined as:
-- Start: Last Sunday at 00:00:00 Beijing time
-- End: This Saturday at 23:59:59 Beijing time
-
-Use the current date to calculate these boundaries. For example, if today is Monday March 9, 2026, the week runs from Sunday March 2 to Saturday March 8.
+Given user input `20260314`:
+- End date = 2026-03-14
+- Find the day-of-week for that date (Saturday = 6)
+- Start date = end date minus dayOfWeek days → 2026-03-08 (Sunday)
+- Filter range: 2026-03-08 00:00:00 to 2026-03-14 23:59:59
 
 ## Implementation approach
 
-1. Run `scripts/fetch_weekly.js` to get this week's articles as JSON
-2. For each article, generate a 20-30 character Chinese summary based on the title and description
-3. Format and present the results
+Run the script with the user's date as argument:
 
-The script handles RSS fetching, XML parsing, time filtering, and category filtering. It outputs JSON with articles array and week boundaries.
+```
+node scripts/fetch_weekly.js 20260314
+```
+
+The script outputs JSON: `{ articles: [...], weekStart: "2026-03-08", weekEnd: "2026-03-14" }`.
+
+Then generate a 20-30 character Chinese summary for each article and format the results.
 
 ## Output format
 
-Present results in Chinese with this structure:
-
 ```
-找到本周（3月2日-3月8日，北京时间）OpenAI 的 X 篇 Research/Engineering 文章：
+找到（3月8日-3月14日）OpenAI 的 X 篇 Research/Engineering 文章：
 
 **1. [Article Title]**
    - 分类: Research
-   - 发布时间: 2026年3月5日
-   - 概述: [20-30 character summary in Chinese]
+   - 发布时间: 2026年3月12日
+   - 概述: [20-30 字中文摘要]
    - 链接: https://...
-
-**2. [Article Title]**
-   ...
 ```
 
-If no articles found this week, inform the user and optionally show the most recent Research/Engineering articles from previous weeks.
-
-## Example output
+If no articles found:
 
 ```
-找到本周（3月2日-3月8日，北京时间）OpenAI 的 2 篇 Research 文章：
-
-**1. Reasoning models struggle to control their chains of thought, and that's good**
-   - 分类: Research
-   - 发布时间: 2026年3月5日
-   - 概述: 介绍推理模型思维链控制研究，探讨控制难度的价值
-   - 链接: https://openai.com/index/...
-
-**2. Extending single-minus amplitudes to gravitons**
-   - 分类: Research
-   - 发布时间: 2026年3月4日
-   - 概述: 将单负振幅扩展到引力子的物理学研究预印本
-   - 链接: https://openai.com/index/...
+（3月8日-3月14日）没有找到 OpenAI 的 Research/Engineering 文章。
 ```
