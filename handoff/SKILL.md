@@ -1,244 +1,369 @@
 ---
 name: handoff
-description: This skill should be used when the user requests to save progress, pause work, create a handoff document, or says "保存进度", "handoff", "暂停", "checkpoint". It enables zero-loss context transfer across coding sessions by maintaining structured HANDOFF.md and optional CHECKPOINT.md files in the workspace directory. Use this skill at the end of a session or when approaching context limits to preserve work state for the next session.
+description: This skill should be used when the user requests to save progress, pause work, create a handoff document, or says "保存进度", "handoff", "暂停", "checkpoint", "交接". It enables zero-loss context transfer across AI agent sessions by creating a structured handoff document written FOR THE NEXT AI AGENT (not for humans). Use this at session end, when approaching context limits, or before switching tasks. The handoff preserves executable context - specific file paths, function names, decision rationale, failed approaches, and priority-ordered next steps.
 ---
 
-# Handoff
+# Handoff - AI Agent Context Transfer
 
-## Overview
+## Core Principle
 
-Enable zero-loss context transfer across coding sessions by maintaining structured state documents in the workspace. This skill implements a Code Relay-inspired HANDOFF mechanism that saves work progress, allowing the next session to quickly restore full context without information loss.
+**This is NOT a user summary - it's a technical handoff TO THE NEXT AI AGENT.**
 
-**Key benefit:** Unlike auto-compression which loses critical details, HANDOFF provides structured, recoverable state snapshots that the next session can use to continue work seamlessly.
+The next agent cannot access this conversation. It only sees your handoff document. Your goal: enable it to continue work immediately without repeating your analysis, mistakes, or wasted effort.
 
 ---
 
-## When to Use This Skill
+## When to Trigger
 
-**Trigger keywords (any of these):**
-- "保存进度" / "save progress"
-- "handoff" / "HANDOFF"
-- "暂停" / "pause"
-- "checkpoint"
-- "保存状态" / "save state"
-- "交接" / "hand over"
+**User keywords:**
+- "保存进度" / "save progress" / "handoff" / "暂停" / "checkpoint" / "交接"
 
 **Proactive triggers:**
-- Conversation is approaching context limit
-- Complex task that will span multiple sessions
-- End of work session
-- Before switching to another task
+- Context approaching limit
+- Session ending
+- Complex multi-session task
+- Before task switching
 
 ---
 
 ## Workflow
 
-### Step 1: Determine Workspace Location
+### Step 1: Determine File Location
 
-Check for workspace directory in the following order:
+Generate filename: `./{YYMMDD}-handoff.md` (e.g., `./260314-handoff.md`)
 
-1. User-specified workspace path
-2. `./workspace/` (current directory)
-3. Project root workspace directory
-4. Ask user to confirm location
+Use current directory unless user specifies otherwise.
 
-### Step 2: Gather Current State
+### Step 2: Gather Executable Context
 
-Before writing HANDOFF, collect:
+Collect SPECIFIC, ACTIONABLE information:
 
-- **Completed work** — What features/functions are done
-- **In-progress work** — What's currently being worked on
-- **Next steps** — What to do next
-- **Gotchas and pitfalls** — Problems encountered and their solutions
-- **Branch status** — Current git branch and commit SHA
-- **Files modified** — List of changed files
+- **Concrete identifiers**: File paths, class names, function names, variable names, API endpoints
+- **Decision rationale**: WHY certain approaches were chosen
+- **Failed attempts**: What was tried and WHY it didn't work
+- **Assumptions made**: What was assumed to be true
+- **Verification status**: What has been tested/confirmed
 
-### Step 3: Write HANDOFF.md
+### Step 3: Write Handoff Document
 
-Write to `{workspace}/HANDOFF.md` using the structured format below.
+Write to `./{YYMMDD}-handoff.md` using the structure below.
 
-### Step 4: (Optional) Write CHECKPOINT.md
+### Step 4: Confirm
 
-For more detailed state snapshots, also write `{workspace}/CHECKPOINT.md`. Use this when:
-- Context is extremely tight
-- Complex task with many sub-components
-- Need to preserve design decisions and reasoning
-
-### Step 5: Confirm and Report
-
-Confirm to user that handoff is complete, showing the file location and a brief summary.
+Tell user: "Handoff saved to `{filename}` - next agent can continue from here."
 
 ---
 
-## HANDOFF.md Format
+## Handoff Document Structure
 
 ```markdown
-# HANDOFF
+# AI Agent Handoff - {YYMMDD}
 
-**Session Date:** YYYY-MM-DD HH:MM
-**Branch:** `branch-name` @ `commit-sha`
-
----
-
-## Completed
-
-- [x] Feature/task 1 — description
-- [x] Feature/task 2 — description
-
-## In Progress
-
-- [ ] Task name — brief description of what's being done
-
-## Next Steps
-
-1. First next action
-2. Second next action
-3. Third next action
-
-## Gotchas & Pitfalls
-
-- **Issue description** — Solution approach
-- **Another problem** — How it was resolved
-
-## Files Modified
-
-- `path/to/file1.ts` — changes made
-- `path/to/file2.ts` — changes made
-
-## Branch Status
-
-- Current branch: `feature/xxx`
-- Latest commit: `abc123...`
-- Committed: Yes/No
-- Pushed: Yes/No
+> **Target Audience:** Next AI Agent (cannot access current context)
+> **Goal:** Enable immediate continuation without repeating analysis or mistakes
 
 ---
 
-## Notes for Next Session
+## 1. Current Task Objective
 
-Any additional context, design decisions, or important notes for continuing the work.
+**What problem are we solving:**
+[Specific problem description]
+
+**Expected output:**
+[Concrete deliverables with acceptance criteria]
+
+**Completion criteria:**
+[How to know when done]
+
+---
+
+## 2. Current Progress
+
+**Completed:**
+- [Specific action taken] - resulted in [concrete outcome]
+- [Another completed item] - file: `path/to/file.ts:123`
+
+**In progress:**
+- [Current work item] - status: [percentage or milestone]
+- Files being modified: `path/to/file1.ts`, `path/to/file2.ts`
+
+---
+
+## 3. Critical Context
+
+**User requirements:**
+- [Explicit requirement 1]
+- [Explicit requirement 2]
+
+**Key constraints:**
+- [Technical constraint] - reason: [why it matters]
+- [Business constraint] - impact: [what it affects]
+
+**Important decisions made:**
+- **Decision:** [What was decided]
+  - **Rationale:** [Why this approach]
+  - **Alternatives considered:** [What else was evaluated]
+  - **Trade-offs:** [What we're giving up]
+
+**Assumptions:**
+- [Assumption 1] - needs verification: [yes/no]
+- [Assumption 2] - confirmed by: [evidence]
+
+---
+
+## 4. Key Findings
+
+**Technical discoveries:**
+- [Finding 1] - location: `file.ts:line_number`
+- [Pattern observed] - affects: [what components]
+
+**Root causes identified:**
+- [Problem] → [Root cause] → [Evidence: file/log/test]
+
+**Critical insights:**
+- [Insight that changes approach]
+- [Non-obvious relationship between components]
+
+---
+
+## 5. Failed Approaches (DO NOT RETRY)
+
+**Approach 1: [Description]**
+- **Why tried:** [Reasoning]
+- **Why failed:** [Specific error or limitation]
+- **Evidence:** [Error message, test result, file: `path:line`]
+- **Lesson:** [What this teaches us]
+
+**Approach 2: [Description]**
+- **Why tried:** [Reasoning]
+- **Why failed:** [Specific reason]
+- **Don't waste time on:** [What to avoid]
+
+---
+
+## 6. Pending Tasks (Priority Order)
+
+**Priority 1 (URGENT):**
+- [ ] [Specific task] - blocks: [what depends on this]
+  - Files: `path/to/file.ts`
+  - Function: `functionName()`
+  - Expected change: [what needs to happen]
+
+**Priority 2 (HIGH):**
+- [ ] [Next task] - depends on: [prerequisite]
+  - Location: `path/to/file.ts:line_range`
+
+**Priority 3 (MEDIUM):**
+- [ ] [Lower priority task]
+
+---
+
+## 7. Recommended First Steps
+
+**Step 1: Verify current state**
+```bash
+# Commands to run
+git status
+git log -1 --oneline
+```
+
+**Step 2: Check these files first**
+- `path/to/critical/file.ts` - contains: [what to look for]
+- `path/to/another/file.ts:123-145` - focus on: [specific section]
+
+**Step 3: Run this to validate**
+```bash
+# Validation command
+npm test path/to/test.spec.ts
+```
+
+**Step 4: Start here**
+- Open: `path/to/file.ts`
+- Locate: `function targetFunction()`
+- Modify: [specific change needed]
+- Reason: [why this is the right starting point]
+
+---
+
+## 8. Risks & Pitfalls
+
+**Easy to misunderstand:**
+- [Concept X] - actually means: [correct interpretation]
+- [File Y] - looks like [A] but is actually [B]
+
+**Already verified (don't re-check):**
+- ✓ [Thing 1] - confirmed in: `file.ts:line`
+- ✓ [Thing 2] - test: `test.spec.ts` passes
+
+**Watch out for:**
+- [Gotcha 1] - symptom: [how it manifests] - solution: [how to handle]
+- [Edge case] - occurs when: [condition] - handle by: [approach]
+
+**Don't go down these paths:**
+- ❌ [Approach X] - already tried, failed because: [reason]
+- ❌ [Direction Y] - looks promising but: [why it won't work]
+
+---
+
+## 9. File Inventory
+
+**Modified files:**
+- `path/to/file1.ts` - changes: [what was changed] - status: [committed/uncommitted]
+- `path/to/file2.ts` - changes: [what was changed] - status: [committed/uncommitted]
+
+**New files created:**
+- `path/to/new/file.ts` - purpose: [why it exists]
+
+**Files to review:**
+- `path/to/important/file.ts` - contains: [relevant info]
+
+---
+
+## 10. Git Status
+
+**Branch:** `branch-name`
+**Latest commit:** `abc123def` - message: "commit message"
+**Uncommitted changes:** [yes/no]
+**Unpushed commits:** [yes/no]
+
+---
+
+## 11. Environment & Dependencies
+
+**Runtime:**
+- Node version: [version]
+- Package manager: [npm/yarn/pnpm]
+
+**Key dependencies:**
+- [package-name@version] - used for: [purpose]
+
+**Environment variables needed:**
+- `VAR_NAME` - purpose: [what it controls]
+
+---
+
+## 12. Next Agent's First Action
+
+**Immediate next step:**
+
+1. Read file: `path/to/file.ts:line_range`
+2. Verify assumption: [what to check]
+3. If [condition], then [action A], else [action B]
+4. Expected outcome: [what should happen]
+
+**Why start here:**
+[Explanation of why this is the optimal starting point based on current state]
+
+---
+
+## Session Metadata
+
+- **Created:** {YYYY-MM-DD HH:MM}
+- **Context tokens used:** [approximate]
+- **Session duration:** [time spent]
+- **Handoff reason:** [why session ended]
 ```
 
 ---
 
-## CHECKPOINT.md Format (Optional)
+## Writing Guidelines
 
-More detailed snapshot for complex tasks:
+**Be specific, not generic:**
+- ❌ "Fix the authentication bug"
+- ✅ "Fix JWT token expiration in `src/auth/middleware.ts:45` - tokens expire after 1 hour instead of 24 hours"
 
-```markdown
-# CHECKPOINT
+**Include evidence:**
+- ❌ "The API is slow"
+- ✅ "GET /api/users takes 3.2s (measured via `curl -w '%{time_total}'`) - caused by N+1 query in `UserController.ts:89`"
 
-**Created:** YYYY-MM-DD HH:MM
-**Branch:** `branch-name` @ `commit-sha`
+**Document WHY, not just WHAT:**
+- ❌ "Used Redis for caching"
+- ✅ "Used Redis for caching because in-memory cache doesn't persist across container restarts (requirement from user: 'cache must survive deployments')"
 
----
-
-## Task Overview
-
-[Full task description and objectives]
-
----
-
-## Architecture & Design
-
-[Key architectural decisions, design patterns chosen]
+**Mark verification status:**
+- ✓ Confirmed: [evidence]
+- ⚠️ Assumed: [needs verification]
+- ❌ Disproven: [evidence]
 
 ---
 
-## Implementation Progress
+## Anti-Patterns (Avoid These)
 
-### Module 1: Status
-- Completed: ...
-- Remaining: ...
+❌ **Vague descriptions:** "The code needs improvement"
+✅ **Specific:** "Function `processData()` in `utils.ts:234` has O(n²) complexity - refactor to use Map for O(n)"
 
-### Module 2: Status
-- Completed: ...
-- Remaining: ...
+❌ **Missing context:** "Changed the config"
+✅ **Full context:** "Changed `timeout` in `config/api.ts:12` from 5000ms to 30000ms because external API (user requirement: 'must support slow 3rd party API') takes 15-20s to respond"
 
----
-
-## Technical Details
-
-[Database schema changes, API modifications, etc.]
+❌ **No rationale:** "Decided to use PostgreSQL"
+✅ **With rationale:** "Decided to use PostgreSQL over MongoDB because user needs ACID transactions for payment processing (explicit requirement: 'payments must be atomic')"
 
 ---
 
-## Dependencies & Relationships
-
-[How different components interact]
-
----
-
-## Testing Status
-
-- Unit tests: ...
-- Integration tests: ...
-- Manual testing: ...
-
----
-
-## Open Questions
-
-[Unresolved issues or decisions pending]
-```
-
----
-
-## Session Startup: Reading HANDOFF
+## Session Startup: Reading Previous Handoff
 
 When starting a new session:
 
-1. **Check for existing HANDOFF.md** in workspace
-2. **If found:** Read and display summary to user
-3. **Ask user:** "Continue from previous session? [Y/n]"
-4. **If yes:** Use HANDOFF content to restore context and continue work
-
-### Startup Summary Format
+1. Check for `*-handoff.md` files in current directory
+2. If found, read the most recent one
+3. Display brief summary to user:
 
 ```
-Found previous HANDOFF (YYYY-MM-DD):
+Found handoff from {date}:
 
-Branch: feature/xxx @ abc123
+Task: {brief objective}
+Progress: {completion percentage}
+Next step: {priority 1 task}
 
-Completed:
-- Feature 1
-- Feature 2
-
-In Progress:
-- Task being worked on
-
-Next Steps:
-1. First next action
-2. Second next action
-
-Continue from this session? [Y/n]
+Continue from here? [Y/n]
 ```
 
----
-
-## File Communication Principle
-
-**Critical:** Always write large content to files, not into the conversation.
-
-- HANDOFF/ CHECKPOINT files are the mechanism for state transfer
-- Keep conversation minimal — just confirm file was written
-- Reference file paths rather than duplicating content
-
-This protects the context window and ensures state is recoverable.
+4. If user confirms, use handoff content to restore full context
+5. Start with "Recommended First Steps" section
 
 ---
 
-## Tips
+## Tips for Maximum Effectiveness
 
-1. **Be specific** — Include concrete file paths, function names, commit SHAs
-2. **Document decisions** — Note why certain approaches were chosen
-3. **List failures** — What didn't work is as important as what did
-4. **Keep it updated** — Update HANDOFF after significant progress
-5. **Delete when done** — Remove HANDOFF/ CHECKPOINT after task completion
+1. **Assume zero context** - next agent sees ONLY your handoff
+2. **Prioritize executable info** - file paths > abstract concepts
+3. **Document the "why"** - decisions without rationale are useless
+4. **Mark dead ends** - save next agent from repeating failures
+5. **Be brutally specific** - "line 45" not "somewhere in the file"
+6. **Include commands** - exact bash/npm commands to run
+7. **Update incrementally** - refresh handoff after major progress
+8. **Delete when done** - remove handoff after task completion
 
 ---
 
-## Resources
+## Example: Good vs Bad Handoff
 
-### workspace/
-Directory for HANDOFF.md and CHECKPOINT.md files. This directory should exist at the project root or designated workspace location.
+**❌ Bad (vague, no context):**
+```
+Working on user authentication. Made some progress.
+Need to fix the login bug. Check the auth files.
+```
+
+**✅ Good (specific, executable):**
+```
+Task: Implement JWT refresh token rotation (user requirement: "tokens must auto-refresh")
+
+Progress:
+- ✓ Added refreshToken field to User model (`models/User.ts:23`)
+- ✓ Created POST /auth/refresh endpoint (`routes/auth.ts:67`)
+- ⚠️ In progress: Token rotation logic in `middleware/auth.ts:89-120`
+
+Failed approach:
+- Tried storing refresh tokens in Redis - failed because Redis instance
+  resets on deploy (confirmed with DevOps). Don't retry this.
+
+Next step:
+1. Open `middleware/auth.ts:89`
+2. Replace Redis call with database query: `User.findOne({refreshToken})`
+3. Test with: `npm test -- auth.refresh.spec.ts`
+4. Expected: Test "should rotate refresh token" passes
+
+Why start here: Token rotation is blocking login flow (Priority 1).
+Database approach confirmed working in staging environment.
+```
+
