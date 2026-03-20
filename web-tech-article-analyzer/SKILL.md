@@ -159,9 +159,33 @@ Use this skill when:
 | **工具介绍文** | 功能介绍、使用方法、与同类对比 | 工具定位 + 优劣势 + 适用场景 |
 | **混合类型** | 兼具多种特征 | 以主要特征为主，兼顾次要特征 |
 
-### STEP 3: Generate Analysis & Console Output
+### STEP 3: Two-Pass Deep Reading & Analysis
 
 **All outputs are in Chinese. Preserve English technical terms (e.g., `PagedAttention`, `vLLM`). Output directly to console — DO NOT use Write tool.**
+
+**Two-pass reading is mandatory for all single article analysis. The goal is to avoid shallow first-impression bias — the second pass often reveals nuances, implicit assumptions, and structural logic that the first pass misses.**
+
+#### Pass 1: Initial Read (Quick Comprehension)
+
+Read through the article once to build a mental model:
+- What is the author's main claim or goal?
+- What is the overall structure and flow?
+- Which sections seem most important?
+- What questions or uncertainties arise?
+
+Do NOT output anything yet. Internally note your first impressions and any gaps in understanding.
+
+#### Pass 2: Close Read (Deep Analysis)
+
+Re-read the article with focused attention, now that you have the full picture:
+- Verify your initial impressions — were they accurate?
+- Examine the evidence and reasoning behind each claim
+- Look for implicit assumptions the author makes
+- Identify what the author chose NOT to say (omissions)
+- Check for internal consistency across sections
+- Extract all data points, metrics, and specific examples
+
+Only after completing both passes, generate the final output below.
 
 ---
 

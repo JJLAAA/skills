@@ -10,9 +10,6 @@ description: |
   from multiple perspectives, or when user mentions research, investigation, or needs synthesized analysis
   with citations.
 license: MIT
-metadata:
-  author: awesome-llm-apps
-  version: "2.0.0"
 allowed-tools: *
 ---
 
