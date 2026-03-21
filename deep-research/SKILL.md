@@ -10,7 +10,6 @@ description: |
   from multiple perspectives, or when user mentions research, investigation, or needs synthesized analysis
   with citations.
 license: MIT
-allowed-tools: *
 ---
 
 # Deep Research — Iterative Reflection Loop

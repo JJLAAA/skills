@@ -459,7 +459,7 @@ print(json.dumps(articles, ensure_ascii=False))
 
 **Step 5.1: Confirm article scope and divide into groups**
 
-First, confirm the time range with user:
+Auto-confirm the scope before execution:
 ```
 Found {N} articles from past 7 days ({start_date} to {end_date}).
 Proceeding with analysis of these {N} articles.
@@ -474,153 +474,33 @@ Then divide the filtered articles into groups:
 
 **Step 5.2: Launch subAgents SEQUENTIALLY (foreground execution)**
 
-Launch subAgents one at a time in FOREGROUND mode to avoid permission issues:
+For each subAgent group, process articles one by one. For **each article**, subAgent MUST:
 
-```
-# SubAgent Template for Each Group:
-
-Agent(
-    subagent_type="general-purpose",
-    description="分析第 [start]-[end] 篇文章并导出详细 markdown",
-    run_in_background=false,  # FOREGROUND execution to allow permission requests
-    prompt="""You are a technical article analyzer. Analyze the following articles and create detailed markdown files for each.
-
-OUTPUT DIRECTORY: /Users/leo/projects/[blog-name]-analysis-[YYYYMMDD]/
-
-ARTICLES TO ANALYZE (Group [X] of [total]):
-1. [Article Title]
-   URL: [url]
-   Target file: [number]-[slug].md
-
-2. [Article Title]
-   URL: [url]
-   Target file: [number]-[slug].md
-
-[... continue for all articles in this group ...]
-
-CRITICAL INSTRUCTIONS - Use the SAME analysis methodology as Single Article Mode:
-
-For EACH article:
-
-Step 1: Fetch and index article content
-- Use ctx_fetch_and_index(url="[article-url]", source="Article: [title]")
-- Returns ~3KB preview, full content indexed
-
-Step 2: Extract key information using ctx_search
-- ctx_search(queries=["article structure and main points", "technical details and metrics", "author arguments and evidence"], source="Article: [title]", limit=5)
-
-Step 3: Identify article type (SAME as Single Article Mode STEP 2)
-Determine which type:
-- **技术观点文**: 提出明确主张、有对比论证
-- **教程/实操文**: 分步骤指引、有代码示例
-- **经验分享文**: 项目复盘、踩坑记录
-- **工具介绍文**: 功能介绍、使用方法
-
-Step 4: Generate analysis using type-specific template (SAME as Single Article Mode STEP 3)
-
-For 技术观点文, use this template:
-```markdown
-## 文章元信息
-- 标题：
-- 作者：
-- 发表时间：
-- 原文链接：
-
-## 一句话总结
-
-## SCQA 脉络
-- **Situation（情境）**：
-- **Complication（冲突）**：
-- **Question（问题）**：
-- **Answer（答案）**：
-
-## 核心论点拆解
-### 论点 1：[论点名称]
-- **主张**：
-- **论据**：
-- **推理逻辑**：[强/中/弱]
-
-## 关键数据与证据
-
-## 批判性评价
-### 论证强项
-### 论证弱项 / 可商榷之处
-### 被忽略的视角
-
-## 适用边界
-- **成立条件**：
-- **不成立条件**：
-
-## 行动建议
-- **可以立即应用的点**：
-- **需要进一步验证的点**：
-
-## 延伸思考
-```
-
-For 教程/实操文:
-```markdown
-## 文章元信息
-## 一句话总结
-## 知识结构
-- **目标**：
-- **前置知识**：
-- **核心步骤**：
-- **关键产出**：
-## 技术要点
-## 实操可行性评估
-## 行动建议
-```
-
-For 经验分享文:
-```markdown
-## 文章元信息
-## 一句话总结
-## 背景与上下文
-## 核心经验提炼
-### 经验 1：
-- **内容**：
-- **支撑案例**：
-- **可迁移性**：
-## 批判性评价
-## 行动建议
-```
-
-For 工具介绍文:
-```markdown
-## 文章元信息
-## 一句话总结
-## 工具概览
-## 优劣势分析
-## 适用场景
-## 同类对比
-## 行动建议
-```
-
-Step 5: Export to markdown file
-- Write(file_path="[OUTPUT_DIRECTORY]/[target-file]", content="[complete analysis]")
-
-Step 6: Move to next article
-
-COMPLETION:
-After analyzing ALL articles in your group:
-1. List all files you created
-2. Provide a 2-3 sentence summary of key themes
-
-Start with the first article!
-"""
-)
-```
+1. Fetch article content
+   - Use `ctx_fetch_and_index` (preferred) or `webReader`
+2. Run source detection + article type detection
+   - Follow **Single Article Mode STEP 1 + STEP 2** exactly
+3. Perform mandatory two-pass deep reading
+   - Follow **Single Article Mode STEP 3** exactly
+4. Generate final analysis using **Single Article Mode type-specific template**
+   - Reddit URL/content → use **Reddit Mode Output**
+   - Technical article → choose one template from:
+     - A. 技术观点文
+     - B. 教程/实操文
+     - C. 经验分享文
+     - D. 工具介绍文
+5. Write analysis to markdown file
+   - Keep the selected single-article template structure intact
+   - Do NOT convert to any custom RSS file skeleton
 
 **Step 5.3: Wait for each subAgent to complete**
 - SubAgents run in foreground (sequential execution)
 - Each completes before the next starts
-- Retrieve results after each completion
 
-**Step 5.4: Consolidate and verify**
-- Verify all markdown files were created
-- Check that each file contains complete analysis
-- Create README.md index file with complete article listing
+**Step 5.4: Consolidate and verify completeness**
+- Verify every article produced one markdown file
+- Verify each file follows one of the single-article templates above
+- Verify no file uses deprecated RSS-specific skeleton sections
 
 ### STEP 6: Generate Index README
 
@@ -666,7 +546,8 @@ Start with the first article!
 
 **CRITICAL REQUIREMENTS for RSS Mode:**
 - ⚠️ **Analyze EVERY article** from the past 7 days - do not skip any
-- ⚠️ **Each markdown file must be COMPLETE** with all required sections
+- ⚠️ **Each article file MUST follow Single Article Mode template output** (A/B/C/D or Reddit)
+- ⚠️ **Do NOT use deprecated RSS custom file skeleton** (`Content Overview/Detailed Outline/Core Summary/Deep Analysis/Unique Value`)
 - ⚠️ **Use ctx_fetch_and_index** in subAgents to avoid context pollution
 - ⚠️ **Use ctx_search** to extract key information efficiently
 - ⚠️ **SubAgents run in FOREGROUND** (run_in_background=false) to allow permission requests
@@ -686,88 +567,25 @@ Start with the first article!
 - Create individual markdown files for each article
 - Generate README.md index file
 - Save to: `/Users/leo/projects/[blog-name]-analysis-[YYYYMMDD]/`
-- Same 5-section structure as console output
+- **For each article file, use the SAME analysis method and SAME output template as Single Article Mode**
+- Do NOT use any RSS-specific custom article skeleton format
 
-### Individual Article File Template
+### Individual Article File Template (RSS Mode)
 
-Each article analysis file MUST follow this exact structure:
+In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
+- Reddit content → `Reddit Mode Output`
+- Technical article → choose one:
+  - `A. 技术观点文（完整批判性分析）`
+  - `B. 教程/实操文`
+  - `C. 经验分享文`
+  - `D. 工具介绍文`
 
-```markdown
-# [Article Title]
-
-## 📌 Content Overview
-
-- **标题**: [Cleaned accurate title]
-- **技术领域**: [e.g., LLM 推理/编译器优化/分布式系统]
-- **内容类型**: [Reddit 帖子/技术文章] + [源语言→输出语言]
-- **发布日期**: [Date]
-- **原文链接**: [URL]
-
-## 📑 Detailed Outline
-
-### Core Sections (X%)
-
-- **一级标题**: Summary with technical details
-  - 🔥 **二级标题**: [Key Solution] + **Quantitative Metrics** (e.g., "延迟↓42%", "吞吐量↑3x")
-  - **二级标题**: Supporting evidence summary
-
-[Continue with all major sections...]
-
-## 💎 Core Summary
-
-[100±10 words in Chinese, preserving English technical terms]
-
-Example: 🔥 [突破性技术] 通过[方法]达成[指标]，解决[场景]瓶颈。
-
-## ⚙️ Deep Analysis
-
-Apply the 7-Layer Framework to extract structured insights:
-
-### 🎯 Layer 1: Problem Space
-- **核心问题**: [Problem definition]
-- **现有方案局限**: [Limitations]
-- **目标场景**: [Use cases]
-
-### 🏗️ Layer 2: Architecture Design
-- **架构模式**: [Pattern name]
-- **核心组件**: [Key components]
-- **设计权衡**: [Trade-offs]
-
-### 🔧 Layer 3: Implementation
-- **[Tech Name]** | 位置 [Section%]
-  [Principle + Metrics]
-
-  Example: **PagedAttention** | 位置 [35-50%]
-  通过虚拟内存分页管理KV cache，显存利用率提升至95%+
-
-### 📊 Layer 4: Quality Assurance
-- **评估方法**: [Evaluation approach]
-- **关键指标**: [Metrics with values]
-
-### 🚀 Layer 5: Production Engineering
-- **可靠性保障**: [Reliability mechanisms]
-- **部署策略**: [Deployment approach]
-
-### 💡 Layer 6: Experience Distillation
-- **最佳实践**: [Best practices]
-- **反模式**: [Anti-patterns]
-
-### 🔗 Layer 7: Cross-domain Connections
-- **相关技术对比**: [Comparisons]
-- **适用边界**: [When to use]
-
-*Note: Only include layers with substantial content. Skip layers lacking information.*
-
-## 🌟 Unique Value
-
-[Location] [Tech Name]: [Breakthrough point] + **Verification Data**
-
-Only include this section if there are genuine breakthrough innovations.
-
-**原文标签**: #tag1 #tag2
-**生成时间**: [timestamp]
-**分析工具**: web-tech-article-analyzer
-```
+⚠️ Deprecated and removed in RSS mode:
+- `## 📌 Content Overview`
+- `## 📑 Detailed Outline`
+- `## 💎 Core Summary`
+- `## ⚙️ Deep Analysis`
+- `## 🌟 Unique Value`
 
 ### README.md Template (Index File - RSS Mode Only)
 
@@ -905,10 +723,10 @@ Only include this section if there are genuine breakthrough innovations.
 
 ### Quality Requirements
 Each article analysis (both modes) must be comprehensive:
-- Complete Detailed Outline with all major sections
-- Core Summary of 100±10 words
-- Deep Analysis for all key technical points
-- Unique Value section (only if applicable)
+- Follow one valid single-article template completely (A/B/C/D or Reddit)
+- Preserve required sections for the selected template (do not mix templates arbitrarily)
+- Include full argument/evidence extraction instead of brief summaries
+- In RSS mode, do NOT use deprecated RSS custom skeleton headings
 
 ### File Organization (RSS Mode Only)
 ```
@@ -982,71 +800,30 @@ ARTICLES TO ANALYZE:
 
 WORKFLOW FOR EACH ARTICLE:
 
-Step 1: Fetch the article content
-- Use webReader with url="[article-url]" and return_format="markdown"
-- If webReader fails, use chrome-devtools to navigate and take_snapshot
+Step 1: Fetch and read content
+- Use `ctx_fetch_and_index` + `ctx_search` (preferred) or `webReader`
 
-Step 2: Generate complete analysis following this structure:
+Step 2: Detect source/type exactly as Single Article Mode
+- Run STEP 1 (source detection: Reddit vs Technical Article)
+- Run STEP 2 (type detection for technical article)
 
-# [Article Title]
+Step 3: Analyze exactly as Single Article Mode
+- Run mandatory Two-Pass Deep Reading
+- Output MUST use the exact matching template from Single Article Mode:
+  - Reddit → Reddit Mode Output
+  - Technical article → one of A/B/C/D templates
 
-## 📌 Content Overview
+Step 4: Write markdown file
+- Write to `[OUTPUT_DIRECTORY]/[target-file]`
+- Preserve template structure exactly
+- Do NOT use deprecated RSS custom skeleton headings
 
-- **标题**: [Article title]
-- **技术领域**: [e.g., LLM 推理/编译器优化/分布式系统]
-- **内容类型**: 技术文章 [EN→ZH]
-- **发布日期**: [Date from article]
-- **原文链接**: [Article URL]
-
-## 📑 Detailed Outline
-
-### Core Sections
-
-[Break down the article into major sections. For each section:
-- Provide a brief summary
-- Mark key insights with 🔥
-- Include quantitative metrics when available]
-
-[Continue with ALL major sections from the article...]
-
-## 💎 Core Summary
-
-[Write 100±10 words in Chinese that summarize the key insights.
-Preserve English technical terms like PagedAttention, vLLM, etc.
-Format: 🔥 [突破点] 通过[方法]达成[指标]，解决[场景]问题。]
-
-## ⚙️ Deep Analysis
-
-[For each key technology or concept mentioned:
-- **[Tech Name]** | 位置 [Section%]
-  [Explain the principle, implementation details, and metrics]
-
-Include 3-5 key technologies with specific details.]
-
-## 🌟 Unique Value
-
-[Only if there are genuine breakthrough innovations:
-[Location] [Tech Name]: [Breakthrough point] + **Verification Data**
-
-If no unique value identified, write: 本文未发现突破性创新，但提供了有价值的技术实践和行业观察。]
-
-**原文标签**: #tag1 #tag2 #tag3
-**生成时间**: [current timestamp]
-**分析工具**: web-tech-article-analyzer
-
-Step 3: Export to markdown file
-- Use Write tool with file_path="[OUTPUT_DIRECTORY]/[target-file]"
-- Paste the complete analysis content
-- Verify the file was created successfully
-
-Step 4: Move to next article
+Step 5: Move to next article
 - Process all articles sequentially
-- Do not skip any articles
+- Do not skip any article
 
 COMPLETION:
 After analyzing ALL articles in your group:
 1. List all files you created
-2. Provide a 2-3 sentence summary of key themes across your articles
-
-Start now with the first article!
+2. Briefly summarize cross-article themes in 2-3 sentences
 ```
