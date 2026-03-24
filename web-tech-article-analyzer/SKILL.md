@@ -692,6 +692,7 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 2. **For URL pattern matching**: Check for `/rss`, `/feed`, `.xml`, `atom.xml` patterns
 
 ### Single Article Mode
+0. **Check domain rules first**: Read `references/domain-specific-rules.md` — some domains (e.g., reddit.com, linux.do) require specific tools
 1. **For Reddit URLs**: Use `chrome-devtools` to navigate and capture full content including comments
 2. **For technical articles**: Use `webReader` with markdown format for clean content extraction
 3. **For content already provided**: Skip fetching, proceed directly to analysis
