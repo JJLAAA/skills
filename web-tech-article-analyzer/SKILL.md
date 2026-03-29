@@ -134,8 +134,8 @@ Use this skill when:
    - Detect domain: `reddit.com` (including mobile/legacy domains) → **Reddit Mode**
    - Other domains → **Technical Article Mode**
    - Call appropriate tools:
-     - Reddit Mode: Use chrome-devtools or webReader to fetch body + Top 5 comments
-     - Technical Article Mode: Use webReader to fetch body only (clean content)
+     - Reddit Mode: Use chrome-devtools to fetch body + Top 5 comments
+     - Technical Article Mode: Use webReader first for clean extraction, but if any login/anti-scraping block appears, immediately switch to chrome-devtools
 
 2. **When input is direct content:**
    - Check for Reddit features: "upvote", "comment thread", "u/" prefix → **Reddit Mode**
@@ -143,6 +143,7 @@ Use this skill when:
 
 3. **Exception handling:**
    - 404/empty content → Return: `ERROR: Content fetch failed [URL]`
+   - Login-gated / anti-scraping blocked content (e.g., 401/403, captcha/challenge page, "sign in to continue") → immediately use chrome-devtools and do NOT try other fetch methods
    - Non-technical content (news/video/shopping) → Return: `ERROR: Only technical content supported [type]`
 
 ### STEP 2: Identify Article Type
@@ -477,7 +478,8 @@ Then divide the filtered articles into groups:
 For each subAgent group, process articles one by one. For **each article**, subAgent MUST:
 
 1. Fetch article content
-   - Use `ctx_fetch_and_index` (preferred) or `webReader`
+   - Use `ctx_fetch_and_index` (preferred) or `webReader` only when no interception appears
+   - If login-state/anti-scraping interception appears, switch directly to `chrome-devtools` and do NOT try other fetch methods
 2. Run source detection + article type detection
    - Follow **Single Article Mode STEP 1 + STEP 2** exactly
 3. Perform mandatory two-pass deep reading
@@ -651,21 +653,24 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 
 ### General Guidelines
 1. **Judgment first**: Never proceed to analysis without completing STEP 0 (URL type detection)
-2. **Location marking**:
+2. **Interception handling (critical)**:
+   - If you hit login-state interception or anti-scraping interception at any point, switch directly to `chrome-devtools` immediately
+   - Do NOT retry `webReader`, `curl`, `fetch`, or any other non-browser fetch path after interception is detected
+3. **Location marking**:
    - Sections: Use percentage ranges ([25-40%])
    - Reddit comments: Mark `[评论区: Top N]`
-3. **Anti-redundancy**:
+4. **Anti-redundancy**:
    - Non-Reddit content: Hide all 💬/✅/⚠️ fields
    - Basic concept sections: 1-line summary only
-4. **Termination conditions**:
+5. **Termination conditions**:
    - Cannot identify type → `ERROR: Cannot identify content source [input summary]`
    - Insufficient value density (pure discussion) → Output outline + core summary only
 
 ## Available Tools
 
 ### Single Article Mode
-- **mcp__web_reader__webReader**: Primary tool for fetching article content as markdown (use first)
-- **mcp__chrome-devtools***: Fallback for webReader, required for Reddit content with comments
+- **mcp__web_reader__webReader**: Primary tool for clean extraction on non-blocked technical articles
+- **mcp__chrome-devtools***: Required for Reddit content and mandatory when login/anti-scraping interception is detected
 - **WebSearch**: For supplementing context when needed
 
 ### RSS/Batch Mode
@@ -683,6 +688,7 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
   - Search indexed content with multiple queries
   - Returns only relevant sections
   - Avoids loading full article into context
+- **mcp__chrome-devtools***: Mandatory tool for intercepted pages (login-gated or anti-scraping blocked content)
 - **Write**: For creating markdown files with article analysis (used by subAgents)
 
 ## Tool Selection Strategy
@@ -694,13 +700,15 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 ### Single Article Mode
 0. **Check domain rules first**: Read `references/domain-specific-rules.md` — some domains (e.g., reddit.com, linux.do) require specific tools
 1. **For Reddit URLs**: Use `chrome-devtools` to navigate and capture full content including comments
-2. **For technical articles**: Use `webReader` with markdown format for clean content extraction
-3. **For content already provided**: Skip fetching, proceed directly to analysis
+2. **For technical articles**: Use `webReader` with markdown format only when no interception appears
+3. **If login-state/anti-scraping interception appears** (any domain): immediately switch to `chrome-devtools`; do NOT attempt other fetch methods first
+4. **For content already provided**: Skip fetching, proceed directly to analysis
 
 ### RSS/Batch Mode
 1. **For RSS feed parsing**: Use `scripts/rss_parser.py` to parse feed and extract articles
-2. **For article fetching**: subAgents use `webReader` for each article
-3. **For parallel processing**: Use TaskTool to launch multiple subAgents
+2. **For article fetching**: subAgents use `webReader`/`ctx_fetch_and_index` only when no interception appears
+3. **If interception appears during article fetching**: switch immediately to `chrome-devtools`; do NOT retry other fetch methods
+4. **For parallel processing**: Use TaskTool to launch multiple subAgents
 
 ## Important Notes
 
@@ -708,8 +716,10 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 - ✅ **DO**: Output analysis directly to console
 - ✅ **DO**: Detect article type first, then apply the matching template
 - ✅ **DO**: Display results in conversation
+- ✅ **DO**: Switch directly to `chrome-devtools` when login-state or anti-scraping interception is encountered
 - ❌ **DO NOT**: Create any markdown files
 - ❌ **DO NOT**: Use Write tool
+- ❌ **DO NOT**: Try `webReader`/`curl`/`fetch` retries after interception is detected
 
 ### RSS/Batch Mode Behavior
 - ✅ **DO**: Automatically analyze ONLY articles from past 7 days (default behavior)
@@ -802,7 +812,8 @@ ARTICLES TO ANALYZE:
 WORKFLOW FOR EACH ARTICLE:
 
 Step 1: Fetch and read content
-- Use `ctx_fetch_and_index` + `ctx_search` (preferred) or `webReader`
+- Use `ctx_fetch_and_index` + `ctx_search` (preferred) or `webReader` only when no interception appears
+- If login-state/anti-scraping interception appears, switch directly to `chrome-devtools` and do NOT try other fetch methods
 
 Step 2: Detect source/type exactly as Single Article Mode
 - Run STEP 1 (source detection: Reddit vs Technical Article)

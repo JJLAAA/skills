@@ -12,5 +12,6 @@ Some websites require special handling due to authentication, anti-scraping meas
 ## Guidelines
 
 - When a URL matches a domain in this table, use the specified tool exclusively — do NOT fall back to curl, fetch, or webReader.
-- For domains not listed here, use webReader as the default.
+- For domains not listed here, use webReader as the default only if there is no interception.
+- If login-state or anti-scraping interception appears on any domain (e.g., 401/403, captcha/challenge pages, "sign in to continue"), switch directly to chrome-devtools and do NOT try other fetch methods.
 - If a new domain is found to require special handling (e.g., login-gated content, JS rendering), add it to this table.

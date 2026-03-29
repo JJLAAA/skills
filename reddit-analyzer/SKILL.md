@@ -26,42 +26,9 @@ From the user's input or URL, extract the subreddit name (e.g., "AgentsOfAI", "C
 
 Do not proceed to any subsequent steps until the user provides a subreddit name.
 
-### 2. Fetch Posts Using JSON Endpoint (Primary Method)
+### 2. Fetch Posts Using Browser Scraping
 
-Try to fetch posts directly from Reddit's JSON API without authentication:
-
-```javascript
-const subreddit = 'AgentsOfAI'; // or extracted from user input
-const url = `https://www.reddit.com/r/${subreddit}.json?limit=50`;
-
-fetch(url, {
-  headers: {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-  }
-})
-.then(r => r.json())
-.then(data => {
-  const posts = data.data.children.map(child => {
-    const p = child.data;
-    return {
-      title: p.title,
-      author: p.author,
-      url: 'https://reddit.com' + p.permalink,
-      score: p.score,
-      comments: p.num_comments,
-      created: p.created_utc,
-      selftext: p.selftext.substring(0, 200)
-    };
-  });
-  console.log(JSON.stringify(posts));
-});
-```
-
-**If JSON fetch fails** (network error, rate limit, blocked), proceed to fallback method.
-
-### 3. Fallback: Browser Scraping with Enhanced Loading
-
-If JSON endpoint fails, use chrome-devtools:
+Use chrome-devtools to scrape posts:
 
 1. **Navigate and wait**: Open `https://www.reddit.com/r/{subreddit}/` and wait for initial load
 2. **Scroll to load more**: Execute multiple scrolls to trigger lazy loading:
@@ -76,17 +43,31 @@ If JSON endpoint fails, use chrome-devtools:
    - Links containing `/comments/` (universal fallback)
    - Check for `window.__INITIAL_STATE__` or similar data structures
 
-Example extraction code:
+**IMPORTANT: URL Fix** — `content-href` attribute returns paths like `/r/xxx/comments/...`. The `shreddit-post` extraction may produce URLs with double prefixes (e.g. `https://www.reddit.comhttps://www.reddit.com/r/...`). Always clean URLs before output:
 ```javascript
-// Method 1: shreddit-post elements
-let posts = Array.from(document.querySelectorAll('shreddit-post')).map(post => ({
-  title: post.getAttribute('post-title') || '',
-  author: post.getAttribute('author') || '',
-  url: 'https://www.reddit.com' + (post.getAttribute('content-href') || ''),
-  score: parseInt(post.getAttribute('score')) || 0,
-  comments: parseInt(post.getAttribute('comment-count')) || 0,
-  created: post.getAttribute('created-timestamp') || ''
-}));
+// Fix double-prefix URLs
+url = url.replace('https://www.reddit.comhttps://www.reddit.com', 'https://www.reddit.com');
+url = url.replace('https://reddit.comhttps://www.reddit.com', 'https://www.reddit.com');
+// Ensure path-only values get the full domain
+if (url.startsWith('/r/')) url = 'https://www.reddit.com' + url;
+```
+
+Extraction code:
+```javascript
+// Method 1: shreddit-post elements (primary)
+let posts = Array.from(document.querySelectorAll('shreddit-post')).map(post => {
+  let url = post.getAttribute('content-href') || '';
+  // Fix URL: path-only needs domain prefix
+  if (url.startsWith('/r/')) url = 'https://www.reddit.com' + url;
+  return {
+    title: post.getAttribute('post-title') || '',
+    author: post.getAttribute('author') || '',
+    url: url,
+    score: parseInt(post.getAttribute('score')) || 0,
+    comments: parseInt(post.getAttribute('comment-count')) || 0,
+    created: post.getAttribute('created-timestamp') || ''
+  };
+});
 
 // Method 2: Fallback to link extraction if Method 1 yields no data
 if (posts.length === 0) {
@@ -197,18 +178,12 @@ Present results in this exact structure:
 
 ## Important Notes
 
-- **Data reliability**: JSON endpoint provides accurate scores/comments. Browser scraping may have incomplete data due to lazy loading.
-- **Retry strategy**: If JSON fetch fails once, wait 2 seconds and retry once before falling back to browser.
+- **Data reliability**: Browser scraping via `shreddit-post` elements provides score, comments, and timestamp data. Scroll sufficiently (3+ times) to load enough posts.
 - **Partial results**: If fewer than 10 posts pass all filters, output whatever remains (minimum 3 posts recommended).
-- **Date formatting**: Convert Unix timestamps to relative time (e.g., "2 days ago") or MM-DD format.
-- **URL validation**: Ensure all URLs start with `https://reddit.com` or `https://www.reddit.com`.
+- **Date formatting**: Convert timestamps to MM-DD format.
+- **URL validation**: Always clean URLs to remove double-prefix artifacts. Ensure all URLs start with `https://www.reddit.com`.
 
 ## Error Handling
-
-**JSON endpoint fails (timeout, 429, blocked)**:
-- Wait 2 seconds, retry once
-- If still fails, fall back to browser scraping
-- Log which method was used in output (optional debug info)
 
 **Browser scraping fails (no posts found)**:
 - Check if Reddit changed their HTML structure
