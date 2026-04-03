@@ -671,7 +671,9 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 ### Single Article Mode
 - **mcp__web_reader__webReader**: Primary tool for clean extraction on non-blocked technical articles
 - **mcp__chrome-devtools***: Required for Reddit content and mandatory when login/anti-scraping interception is detected
+- **Read**: For reading snapshot files in segments when using chrome-devtools
 - **WebSearch**: For supplementing context when needed
+- **⚠️ DO NOT use context-mode tools** (ctx_index, ctx_search, ctx_execute) in Single Article Mode - read content directly to ensure completeness
 
 ### RSS/Batch Mode
 - **Agent**: For creating sequential subAgents during batch article analysis
@@ -704,11 +706,67 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 3. **If login-state/anti-scraping interception appears** (any domain): immediately switch to `chrome-devtools`; do NOT attempt other fetch methods first
 4. **For content already provided**: Skip fetching, proceed directly to analysis
 
+### When using chrome-devtools in Single Article Mode
+
+**CRITICAL: Read snapshot content directly, do NOT use context-mode tools**
+
+After `take_snapshot`, the output is saved to a file. Read it directly using the Read tool:
+
+```
+take_snapshot
+  ↓
+Read the snapshot file in segments (offset + limit)
+  ↓
+Perform Two-Pass Deep Reading on the complete content
+  ↓
+Generate analysis based on full understanding
+```
+
+**Why direct reading instead of ctx_search?**
+- Technical article analysis requires understanding the complete structure
+- Search-based approaches may miss chapters/sections with unexpected keywords
+- "Two-Pass Deep Reading" requires seeing the full content, not search results
+- Completeness is more important than token optimization for article analysis
+
+**How to read large snapshots:**
+- Use Read tool with offset and limit parameters
+- Read in segments of 3000-5000 lines
+- Continue until you've read the entire file
+- Then perform the two-pass analysis on your complete understanding
+
 ### RSS/Batch Mode
 1. **For RSS feed parsing**: Use `scripts/rss_parser.py` to parse feed and extract articles
 2. **For article fetching**: subAgents use `webReader`/`ctx_fetch_and_index` only when no interception appears
 3. **If interception appears during article fetching**: switch immediately to `chrome-devtools`; do NOT retry other fetch methods
 4. **For parallel processing**: Use TaskTool to launch multiple subAgents
+
+### ⚠️ Gotchas (RSS/Batch Mode ONLY - subAgents using chrome-devtools)
+
+**`take_snapshot` dumps the full a11y tree into context — subAgents must index it immediately.**
+
+This applies to RSS/Batch subAgents when they use `chrome-devtools`. The raw snapshot must never sit in the subAgent's context window during analysis.
+
+**Note**: This does NOT apply to Single Article Mode, which should read snapshot content directly using the Read tool instead of using context-mode tools.
+
+**Required pattern whenever `take_snapshot` is called:**
+```
+take_snapshot
+  → ctx_index(content=<snapshot_text>, source="<article-slug>")  # index immediately
+  → ctx_search(queries=[                                           # extract only what's needed
+      "核心论点 主张",
+      "验证流程 架构约束",
+      "评论区 社区反馈",
+      ...
+    ])
+  → generate analysis from search results only
+```
+
+**Why**: A single article snapshot can be 30-50KB of raw a11y tree text. Leaving it in context while generating analysis doubles or triples token consumption and crowds out reasoning capacity. In RSS/Batch mode with multiple articles, the effect compounds across every subAgent.
+
+**Checklist before proceeding to analysis after any `take_snapshot` call:**
+- [ ] `ctx_index` called with the full snapshot content?
+- [ ] Analysis driven exclusively via `ctx_search` results?
+- [ ] Raw snapshot NOT referenced again after indexing?
 
 ## Important Notes
 
@@ -717,9 +775,12 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 - ✅ **DO**: Detect article type first, then apply the matching template
 - ✅ **DO**: Display results in conversation
 - ✅ **DO**: Switch directly to `chrome-devtools` when login-state or anti-scraping interception is encountered
+- ✅ **DO**: Read snapshot files directly using Read tool (with offset/limit for large files)
+- ✅ **DO**: Perform Two-Pass Deep Reading on complete content for comprehensive understanding
 - ❌ **DO NOT**: Create any markdown files
 - ❌ **DO NOT**: Use Write tool
 - ❌ **DO NOT**: Try `webReader`/`curl`/`fetch` retries after interception is detected
+- ❌ **DO NOT**: Use context-mode tools (ctx_index, ctx_search, ctx_execute) - these create search-based blind spots
 
 ### RSS/Batch Mode Behavior
 - ✅ **DO**: Automatically analyze ONLY articles from past 7 days (default behavior)

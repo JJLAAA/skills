@@ -1,0 +1,23 @@
+{
+  "skill_name": "agent-cli-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm building a Python CLI tool using Click for managing cloud deployments. It'll be called by Claude Code agents as part of automated deployment pipelines. Right now I have commands like `create-deployment`, `delete-deployment`, `list-deployments`, `get-deployment-status`. Can you audit this structure and tell me what to improve to make it work well with AI agents?",
+      "expected_output": "Audit identifying: (1) verb-noun structure should be flipped to noun-verb (deployment create/delete/list/status), (2) check for structured output, exit codes, dry-run, TTY detection, long flags, error messages. Should provide prioritized fix list.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I want to design a CLI for a task management API that will be used by AI coding agents. The API has: tasks (create, list, get, update, complete, delete), projects (create, list, get, archive), and users (invite, list, remove). Help me design the full CLI structure from scratch — command tree, output format, exit codes, and help text for the `task create` command.",
+      "expected_output": "Full CLI design with: noun-verb command tree, JSON output schema, exit code table (0/2/3/4/5), --help template for task create with examples first, required/optional labels, enum values shown.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I have a Go CLI that creates Kubernetes namespaces. Here's the current implementation:\n\n```go\nvar createCmd = &cobra.Command{\n    Use: \"create\",\n    RunE: func(cmd *cobra.Command, args []string) error {\n        name, _ := cmd.Flags().GetString(\"n\")\n        env, _ := cmd.Flags().GetString(\"e\")\n        \n        fmt.Printf(\"Creating namespace %s in %s environment...\\n\", name, env)\n        \n        err := k8s.CreateNamespace(name, env)\n        if err != nil {\n            fmt.Println(\"Error: \" + err.Error())\n            os.Exit(1)\n        }\n        \n        fmt.Printf(\"Done! Namespace %s created.\\n\", name)\n        return nil\n    },\n}\n\nfunc init() {\n    createCmd.Flags().StringP(\"name\", \"n\", \"\", \"Namespace name\")\n    createCmd.Flags().StringP(\"env\", \"e\", \"\", \"Environment (dev/staging/prod)\")\n}\n```\n\nThis is being called by an AI agent in a CI pipeline and it keeps failing. What's wrong and how do I fix it?",
+      "expected_output": "Identifies multiple issues: short-only flags (-n/-e), unstructured stdout output mixing data and status, only exit code 1 for all errors, no dry-run, no idempotency. Provides fixed Go code with long flags, JSON output to stdout, status to stderr, specific exit codes, --dry-run, --if-not-exists.",
+      "files": []
+    }
+  ]
+}
