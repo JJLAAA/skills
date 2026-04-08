@@ -1,718 +1,249 @@
 # Implementation Patterns for Agent-Friendly CLIs
 
-Ready-to-use code patterns in Python/Click, Go/Cobra, and Rust/Clap.
-
----
-
-## Table of Contents
-
-1. [TTY Detection & Auto-Format](#1-tty-detection--auto-format)
-2. [Structured Output (stdout/stderr separation)](#2-structured-output-stdoutstderr-separation)
-3. [Exit Code Semantics](#3-exit-code-semantics)
-4. [Dry-Run Support](#4-dry-run-support)
-5. [Enum Constraints & Input Validation](#5-enum-constraints--input-validation)
-6. [Idempotent Operations](#6-idempotent-operations)
-7. [Structured Error Messages](#7-structured-error-messages)
-8. [Schema Introspection](#8-schema-introspection)
-9. [Noun-Verb Command Structure](#9-noun-verb-command-structure)
+Language-agnostic patterns for each agent-friendly principle. Apply these in whatever
+framework you're using (Click, Cobra, Clap, Commander, etc.).
 
 ---
 
 ## 1. TTY Detection & Auto-Format
 
-### Python / Click
+**Problem**: Agents pipe output; humans use terminals. One format doesn't serve both.
 
-```python
-import sys
-import json
-import click
+**Pattern**:
+```
+if stdout is a TTY:
+    default_format = "table"
+else:
+    default_format = "json"
 
-def get_default_format():
-    """Return 'json' in non-TTY (agent) context, 'table' for humans."""
-    return "table" if sys.stdout.isatty() else "json"
+format = user_flag("--format") or default_format
 
-@click.command()
-@click.option("--format", "output_format",
-              type=click.Choice(["json", "table", "csv"]),
-              default=None,
-              help="Output format: json|table|csv (default: table in TTY, json in pipe)")
-def list_users(output_format):
-    fmt = output_format or get_default_format()
-    users = fetch_users()  # your data fetch
-
-    if fmt == "json":
-        # Data to stdout, nothing else
-        click.echo(json.dumps(users))
-    elif fmt == "table":
-        # Status info to stderr, table to stdout
-        click.echo("Fetching users...", err=True)
-        for u in users:
-            click.echo(f"{u['id']}\t{u['name']}\t{u['role']}")
-    elif fmt == "csv":
-        import csv, io
-        out = io.StringIO()
-        writer = csv.DictWriter(out, fieldnames=["id", "name", "role"])
-        writer.writeheader()
-        writer.writerows(users)
-        click.echo(out.getvalue())
+if format == "json":
+    write data to stdout as JSON
+elif format == "table":
+    write status messages to stderr
+    write table rows to stdout
 ```
 
-### Go / Cobra
-
-```go
-func isTerminal() bool {
-    fileInfo, _ := os.Stdout.Stat()
-    return (fileInfo.Mode() & os.ModeCharDevice) != 0
-}
-
-func defaultFormat() string {
-    if isTerminal() {
-        return "table"
-    }
-    return "json"
-}
-
-var listCmd = &cobra.Command{
-    Use:   "list",
-    Short: "List users",
-    RunE: func(cmd *cobra.Command, args []string) error {
-        format, _ := cmd.Flags().GetString("format")
-        if format == "" {
-            format = defaultFormat()
-        }
-        users, err := fetchUsers()
-        if err != nil {
-            return err
-        }
-        return outputUsers(users, format)
-    },
-}
-
-func init() {
-    listCmd.Flags().String("format", "", "Output format: json|table|csv")
-}
-```
+**Key rule**: Status/progress messages always go to stderr. Data always goes to stdout.
 
 ---
 
 ## 2. Structured Output (stdout/stderr separation)
 
-### Python / Click
+**Problem**: Agents parse stdout. Mixed output (data + logs) breaks parsing.
 
-```python
-import sys
-import json
-import click
-
-class AgentOutput:
-    """Ensures data goes to stdout, status/logs go to stderr."""
-
-    @staticmethod
-    def data(obj):
-        """Machine-readable data → stdout."""
-        click.echo(json.dumps(obj, ensure_ascii=False))
-
-    @staticmethod
-    def status(msg):
-        """Human-readable status → stderr (invisible to agent pipelines)."""
-        click.echo(msg, err=True)
-
-    @staticmethod
-    def error(code, message, suggestion=None, retryable=False):
-        """Structured error → stderr."""
-        err = {
-            "error": code,
-            "message": message,
-            "retryable": retryable,
-        }
-        if suggestion:
-            err["suggestion"] = suggestion
-        click.echo(json.dumps(err, ensure_ascii=False), err=True)
-
-# Usage
-out = AgentOutput()
-out.status("Connecting to API...")  # agents never see this
-out.data({"users": [...]})          # agents parse this
+**Pattern**:
 ```
+function output_data(obj):
+    write JSON(obj) to stdout
+
+function output_status(msg):
+    write msg to stderr          # agents never see this
+
+function output_error(code, message, suggestion, retryable):
+    write JSON({error, message, suggestion, retryable}) to stderr
+    exit with appropriate code
+```
+
+**Key rule**: stdout is a contract. Never write non-data to stdout.
 
 ---
 
 ## 3. Exit Code Semantics
 
-### Python / Click
+**Problem**: Exit 1 means "something failed" — agents can't distinguish auth errors from
+not-found from rate limits, so they can't decide whether to retry, re-auth, or abort.
 
-```python
-import sys
-import click
-
-class ExitCode:
-    SUCCESS = 0
-    GENERAL_ERROR = 1
-    INVALID_ARGS = 2
-    NOT_FOUND = 3
-    PERMISSION_DENIED = 4
-    CONFLICT = 5
-    DRY_RUN_SUCCESS = 10  # Lightning Labs pattern
-
-class AgentCLIError(click.ClickException):
-    def __init__(self, message, exit_code=ExitCode.GENERAL_ERROR,
-                 suggestion=None, retryable=False):
-        super().__init__(message)
-        self.exit_code = exit_code
-        self.suggestion = suggestion
-        self.retryable = retryable
-
-    def format_message(self):
-        import json
-        err = {
-            "error": self._code_name(),
-            "message": self.format_message_text(),
-            "retryable": self.retryable,
-        }
-        if self.suggestion:
-            err["suggestion"] = self.suggestion
-        return json.dumps(err, ensure_ascii=False)
-
-    def _code_name(self):
-        names = {
-            ExitCode.INVALID_ARGS: "invalid_arguments",
-            ExitCode.NOT_FOUND: "not_found",
-            ExitCode.PERMISSION_DENIED: "permission_denied",
-            ExitCode.CONFLICT: "conflict",
-        }
-        return names.get(self.exit_code, "error")
-
-    def format_message_text(self):
-        return self.message
-
-# Usage
-raise AgentCLIError(
-    "Missing calendar:read permission",
-    exit_code=ExitCode.PERMISSION_DENIED,
-    suggestion="Run: mytool auth login --scope calendar:read",
-    retryable=False
-)
+**Pattern**:
+```
+EXIT_SUCCESS          = 0
+EXIT_GENERAL_ERROR    = 1
+EXIT_INVALID_ARGS     = 2   → agent should fix its command
+EXIT_NOT_FOUND        = 3   → agent should check the resource name
+EXIT_PERMISSION_DENIED = 4  → agent should re-auth or escalate
+EXIT_CONFLICT         = 5   → agent should use --if-not-exists or update
+EXIT_DRY_RUN_SUCCESS  = 10  → dry-run completed, no side effects taken
 ```
 
-### Go / Cobra
-
-```go
-const (
-    ExitSuccess         = 0
-    ExitGeneralError    = 1
-    ExitInvalidArgs     = 2
-    ExitNotFound        = 3
-    ExitPermissionDenied = 4
-    ExitConflict        = 5
-    ExitDryRunSuccess   = 10
-)
-
-type CLIError struct {
-    Code       int
-    ErrorCode  string `json:"error"`
-    Message    string `json:"message"`
-    Suggestion string `json:"suggestion,omitempty"`
-    Retryable  bool   `json:"retryable"`
-}
-
-func (e *CLIError) Error() string {
-    b, _ := json.Marshal(e)
-    return string(b)
-}
-
-func exitWithError(err *CLIError) {
-    fmt.Fprintln(os.Stderr, err.Error())
-    os.Exit(err.Code)
-}
-```
+Map every error type to a distinct exit code. Document the map in `--help`.
 
 ---
 
 ## 4. Dry-Run Support
 
-### Python / Click
+**Problem**: Agents can't undo destructive operations. They need to preview before committing.
 
-```python
-import json
-import click
-
-@click.command()
-@click.option("--name", required=True, help="User name to delete")
-@click.option("--dry-run", is_flag=True,
-              help="Preview what would happen without executing")
-def delete_user(name, dry_run):
-    user = find_user(name)
-    if not user:
-        raise AgentCLIError(f"User '{name}' not found",
-                           exit_code=ExitCode.NOT_FOUND)
-
-    if dry_run:
-        # Structured preview — not just "this is dry-run mode"
-        preview = {
-            "dry_run": True,
-            "action": "delete",
-            "target": {"id": user["id"], "name": user["name"]},
-            "side_effects": [
-                f"Removes user from {len(user['groups'])} groups",
-                "Revokes all active sessions",
-            ],
-            "reversible": False,
-        }
-        click.echo(json.dumps(preview, ensure_ascii=False))
-        sys.exit(ExitCode.DRY_RUN_SUCCESS)  # exit 10: dry-run success
-
-    # Real execution
-    perform_delete(user["id"])
-    click.echo(json.dumps({"deleted": user["id"], "name": user["name"]}))
+**Pattern**:
 ```
+command delete-resource --name X [--dry-run]
+
+if --dry-run:
+    validate inputs
+    resolve what would be affected
+    output JSON preview:
+        {
+          "dry_run": true,
+          "action": "delete",
+          "target": { resolved resource },
+          "side_effects": [ list of consequences ],
+          "reversible": false
+        }
+    exit EXIT_DRY_RUN_SUCCESS (10)
+
+else:
+    perform the real operation
+    output result JSON
+    exit 0
+```
+
+**Key rule**: Dry-run must do real validation (catch errors early) but zero side effects.
 
 ---
 
 ## 5. Enum Constraints & Input Validation
 
-### Python / Click
+**Problem**: Agents hallucinate parameter values. Free-text inputs accept garbage silently.
 
-```python
-import re
-import click
-
-# Enum constraint — agents can't pass invalid values
-@click.option("--role", type=click.Choice(["admin", "member", "viewer"]),
-              default="member",
-              help="User role: admin|member|viewer")
-
-# URL validation — reject dangerous protocols
-def validate_url(ctx, param, value):
-    if value is None:
-        return value
-    dangerous = ["javascript:", "file:", "data:"]
-    if any(value.lower().startswith(p) for p in dangerous):
-        raise click.BadParameter(f"Dangerous URL protocol rejected: {value}")
-    if "@" in value.split("//")[-1].split("/")[0]:
-        raise click.BadParameter("URLs with embedded credentials are not allowed")
-    return value
-
-@click.option("--webhook-url", callback=validate_url,
-              help="Webhook URL (https:// only)")
-
-# Path validation — reject writes to sensitive directories
-def validate_output_path(ctx, param, value):
-    if value is None:
-        return value
-    import os
-    abs_path = os.path.abspath(value)
-    sensitive = [
-        os.path.expanduser("~/.ssh"),
-        os.path.expanduser("~/.gnupg"),
-        os.path.expanduser("~/.aws"),
-    ]
-    for s in sensitive:
-        if abs_path.startswith(s):
-            raise click.BadParameter(
-                f"Writing to {s} is not allowed for security reasons"
-            )
-    return value
+**Pattern**:
 ```
+--role: enum["admin", "member", "viewer"]   # reject anything else at parse time
+--format: enum["json", "table", "csv"]
+
+for free-text inputs, validate at entry:
+    reject dangerous patterns (e.g. javascript: URLs, path traversal)
+    reject ambiguous values with a clear error + valid examples
+
+error message format:
+    "Invalid value 'X' for --role. Valid values: admin, member, viewer"
+```
+
+**Key rule**: Fail fast at argument parsing, before any side effects occur.
 
 ---
 
 ## 6. Idempotent Operations
 
-### Python / Click
+**Problem**: Agents retry on failure. Non-idempotent commands create duplicates.
 
-```python
-import click
-import json
-
-@click.command()
-@click.option("--name", required=True, help="User name")
-@click.option("--role", type=click.Choice(["admin", "member", "viewer"]),
-              default="member")
-@click.option("--if-not-exists", is_flag=True,
-              help="Skip if user already exists (idempotent)")
-@click.option("--idempotency-key", default=None,
-              help="Unique key to prevent duplicate operations")
-def create_user(name, role, if_not_exists, idempotency_key):
-    # Check idempotency key first
-    if idempotency_key and is_duplicate_request(idempotency_key):
-        existing = get_result_for_key(idempotency_key)
-        click.echo(json.dumps({**existing, "idempotent": True}))
-        return
-
-    existing = find_user_by_name(name)
-    if existing:
-        if if_not_exists:
-            # Idempotent: return existing user, exit 0
-            click.echo(json.dumps({**existing, "created": False, "existed": True}))
-            return
-        else:
-            raise AgentCLIError(
-                f"User '{name}' already exists",
-                exit_code=ExitCode.CONFLICT,
-                suggestion=f"Use --if-not-exists to skip, or update with: mytool user update --name '{name}'"
-            )
-
-    user = perform_create(name, role)
-    if idempotency_key:
-        store_result(idempotency_key, user)
-    click.echo(json.dumps({**user, "created": True}))
+**Pattern**:
 ```
+command create-resource --name X [--if-not-exists] [--idempotency-key KEY]
+
+if idempotency-key provided and already seen:
+    return cached result with {"idempotent": true}
+    exit 0
+
+if resource already exists:
+    if --if-not-exists:
+        return existing resource with {"created": false, "existed": true}
+        exit 0
+    else:
+        error: conflict, suggest --if-not-exists or update command
+        exit EXIT_CONFLICT (5)
+
+create resource, store idempotency-key result if provided
+return {"created": true, ...resource}
+```
+
+**Key rule**: Retrying a successful operation must return the same result, not an error.
 
 ---
 
 ## 7. Structured Error Messages
 
-### Python / Click
+**Problem**: "Error: something went wrong" tells an agent nothing actionable.
 
-```python
-import json
-import click
-import sys
-
-def agent_error(error_code: str, message: str,
-                suggestion: str = None, retryable: bool = False,
-                exit_code: int = 1):
-    """Output structured error to stderr and exit."""
-    err = {
-        "error": error_code,
-        "message": message,
-        "retryable": retryable,
-    }
-    if suggestion:
-        err["suggestion"] = suggestion
-
-    click.echo(json.dumps(err, ensure_ascii=False), err=True)
-    sys.exit(exit_code)
-
-# Usage examples
-agent_error(
-    "permission_denied",
-    "Missing calendar:read permission",
-    suggestion="Run: mytool auth login --scope calendar:read",
-    retryable=False,
-    exit_code=4
-)
-
-agent_error(
-    "rate_limited",
-    "API rate limit exceeded (100 req/min)",
-    suggestion="Wait 60 seconds and retry",
-    retryable=True,
-    exit_code=1
-)
-
-agent_error(
-    "invalid_arguments",
-    "--start-date must be before --end-date",
-    suggestion="Example: --start-date 2024-01-01 --end-date 2024-01-31",
-    retryable=False,
-    exit_code=2
-)
+**Pattern**:
 ```
+error output schema (to stderr):
+{
+  "error": "machine_readable_code",   // e.g. "permission_denied"
+  "message": "human description",
+  "suggestion": "exact command to fix this",  // optional but powerful
+  "retryable": true/false
+}
+```
+
+**Examples**:
+- `"suggestion": "Run: mytool auth login --scope calendar:read"`
+- `"suggestion": "Wait 60 seconds and retry"`
+- `"suggestion": "Use --if-not-exists to skip, or: mytool resource update --name X"`
+
+**Key rule**: Every error should tell the agent exactly what to do next.
 
 ---
 
 ## 8. Schema Introspection
 
-### Python / Click
+**Problem**: Agents explore CLIs via `--help`, but `--help` is unstructured text.
 
-```python
-import json
-import click
-
-def build_schema(group, path=""):
-    """Recursively build command schema for introspection."""
-    schema = {
-        "name": group.name,
-        "help": group.help or "",
-        "commands": {}
-    }
-
-    if hasattr(group, "commands"):
-        for name, cmd in group.commands.items():
-            cmd_path = f"{path} {name}".strip()
-            if hasattr(cmd, "commands"):
-                schema["commands"][name] = build_schema(cmd, cmd_path)
-            else:
-                params = []
-                for p in cmd.params:
-                    param_info = {
-                        "name": p.name,
-                        "required": p.required,
-                        "type": str(p.type),
-                        "help": p.help or "",
-                    }
-                    if hasattr(p.type, "choices"):
-                        param_info["choices"] = list(p.type.choices)
-                    if hasattr(p, "default") and p.default is not None:
-                        param_info["default"] = p.default
-                    params.append(param_info)
-                schema["commands"][name] = {
-                    "help": cmd.help or "",
-                    "params": params
-                }
-    return schema
-
-@click.group()
-def cli():
-    pass
-
-@cli.command()
-@click.option("--command", default=None,
-              help="Specific command path to inspect (e.g., 'user create')")
-@click.option("--format", "fmt",
-              type=click.Choice(["json", "pretty"]),
-              default="json")
-def schema(command, fmt):
-    """Output CLI schema for agent introspection."""
-    full_schema = build_schema(cli)
-
-    if command:
-        # Navigate to specific command
-        parts = command.split()
-        node = full_schema
-        for part in parts:
-            node = node.get("commands", {}).get(part)
-            if not node:
-                agent_error("not_found", f"Command '{command}' not found",
-                           exit_code=3)
-
-    output = node if command else full_schema
-
-    if fmt == "pretty":
-        click.echo(json.dumps(output, indent=2, ensure_ascii=False))
-    else:
-        click.echo(json.dumps(output, ensure_ascii=False))
+**Pattern**:
 ```
+command schema [--command "noun verb"] [--format json|pretty]
+
+output: machine-readable command tree
+{
+  "name": "mytool",
+  "commands": {
+    "user": {
+      "commands": {
+        "list": {
+          "help": "...",
+          "params": [
+            {"name": "format", "required": false, "choices": ["json","table"], "default": "json"}
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+**Key rule**: Schema output must be stable across versions (it's a contract).
 
 ---
 
 ## 9. Noun-Verb Command Structure
 
-### Python / Click
+**Problem**: Flat command lists don't scale. Agents can't infer what commands exist.
 
-```python
-import click
+**Pattern**:
+```
+mytool <noun> <verb> [flags]
 
-@click.group()
-def cli():
-    """mytool — example of noun-verb CLI structure."""
-    pass
+nouns = resources the CLI manages (user, project, config, token, ...)
+verbs = consistent across all nouns: list, get, create, update, delete, ensure
 
-# Noun: user
-@cli.group()
-def user():
-    """Manage users."""
-    pass
-
-@user.command("list")
-@click.option("--format", type=click.Choice(["json", "table", "csv"]))
-def user_list(format):
-    """List all users."""
-    pass
-
-@user.command("create")
-@click.option("--name", required=True)
-@click.option("--role", type=click.Choice(["admin", "member", "viewer"]),
-              default="member")
-@click.option("--if-not-exists", is_flag=True)
-@click.option("--dry-run", is_flag=True)
-def user_create(name, role, if_not_exists, dry_run):
-    """Create a user."""
-    pass
-
-@user.command("ensure")
-@click.option("--name", required=True)
-@click.option("--role", type=click.Choice(["admin", "member", "viewer"]),
-              default="member")
-def user_ensure(name, role):
-    """Ensure user exists with given role (idempotent)."""
-    pass
-
-# Noun: project
-@cli.group()
-def project():
-    """Manage projects."""
-    pass
-
-@project.command("list")
-def project_list():
-    """List all projects."""
-    pass
-
-# The pattern: same verbs (list, create, ensure, delete, get) work
-# consistently across all nouns. Agent learns one, infers the rest.
+mytool user list
+mytool user create --name X --role admin
+mytool user ensure --name X --role admin   # idempotent upsert
+mytool project list
+mytool project create --name Y
 ```
 
-### Go / Cobra
-
-```go
-package main
-
-import (
-    "github.com/spf13/cobra"
-)
-
-var rootCmd = &cobra.Command{
-    Use:   "mytool",
-    Short: "Example of noun-verb CLI structure",
-}
-
-// Noun: user
-var userCmd = &cobra.Command{
-    Use:   "user",
-    Short: "Manage users",
-}
-
-var userListCmd = &cobra.Command{
-    Use:   "list",
-    Short: "List all users",
-    RunE:  runUserList,
-}
-
-var userCreateCmd = &cobra.Command{
-    Use:   "create",
-    Short: "Create a user",
-    RunE:  runUserCreate,
-}
-
-func init() {
-    // Build the noun-verb tree
-    rootCmd.AddCommand(userCmd)
-    userCmd.AddCommand(userListCmd)
-    userCmd.AddCommand(userCreateCmd)
-
-    // Long flags only — no short flags for agent-critical params
-    userCreateCmd.Flags().String("name", "", "User name (required)")
-    userCreateCmd.Flags().String("role", "member", "User role: admin|member|viewer")
-    userCreateCmd.Flags().Bool("if-not-exists", false, "Skip if user already exists")
-    userCreateCmd.Flags().Bool("dry-run", false, "Preview without executing")
-    userCreateCmd.MarkFlagRequired("name")
-}
-```
+**Key rule**: Once an agent learns `user list`, it can infer `project list` exists.
+Use the same verb names across all nouns — never mix `list`/`ls`/`show`/`get-all`.
 
 ---
 
-## Complete Example: Agent-Friendly User Management CLI
+## 10. Stdin Input Support
 
-```python
-#!/usr/bin/env python3
-"""
-Example: fully agent-friendly CLI for user management.
-Demonstrates all 10 principles in one coherent implementation.
-"""
-import sys
-import json
-import click
+**Problem**: Agents compose pipelines. Commands that only accept file paths can't be piped to.
 
-# Exit codes (documented, stable across versions)
-EXIT_SUCCESS = 0
-EXIT_ERROR = 1
-EXIT_INVALID_ARGS = 2
-EXIT_NOT_FOUND = 3
-EXIT_PERMISSION_DENIED = 4
-EXIT_CONFLICT = 5
-EXIT_DRY_RUN = 10
-
-def is_tty():
-    return sys.stdout.isatty()
-
-def output(data):
-    """Data → stdout."""
-    click.echo(json.dumps(data, ensure_ascii=False))
-
-def log(msg):
-    """Status → stderr (invisible to agent pipelines)."""
-    click.echo(msg, err=True)
-
-def error(code, message, suggestion=None, retryable=False, exit_code=EXIT_ERROR):
-    """Structured error → stderr, then exit."""
-    err = {"error": code, "message": message, "retryable": retryable}
-    if suggestion:
-        err["suggestion"] = suggestion
-    click.echo(json.dumps(err, ensure_ascii=False), err=True)
-    sys.exit(exit_code)
-
-@click.group()
-def cli():
-    """User management CLI — agent-friendly by design."""
-    pass
-
-@cli.group()
-def user():
-    """Manage users. Subcommands: list, get, create, ensure, delete."""
-    pass
-
-@user.command("list")
-@click.option("--format", "fmt",
-              type=click.Choice(["json", "table", "csv"]),
-              default=None,
-              help="Output format: json|table|csv (default: table in TTY, json in pipe)")
-def user_list(fmt):
-    """List all users.
-
-    Examples:
-      mytool user list
-      mytool user list --format json | jq '.[] | .name'
-    """
-    fmt = fmt or ("table" if is_tty() else "json")
-    log("Fetching users...")
-    users = [{"id": "1", "name": "alice", "role": "admin"}]  # placeholder
-
-    if fmt == "json":
-        output(users)
-    else:
-        for u in users:
-            click.echo(f"{u['id']}\t{u['name']}\t{u['role']}")
-
-@user.command("create")
-@click.option("--name", required=True, metavar="<required>",
-              help="User display name")
-@click.option("--role",
-              type=click.Choice(["admin", "member", "viewer"]),
-              default="member",
-              metavar="<optional, default: member>",
-              help="User role: admin|member|viewer")
-@click.option("--if-not-exists", is_flag=True,
-              help="Skip silently if user already exists (idempotent)")
-@click.option("--dry-run", is_flag=True,
-              help="Preview what would happen without executing")
-def user_create(name, role, if_not_exists, dry_run):
-    """Create a user.
-
-    Examples:
-      mytool user create --name "alice" --role admin
-      mytool user create --name "bob" --if-not-exists
-      mytool user create --name "carol" --dry-run
-
-    Exit codes:
-      0  Created successfully
-      2  Invalid arguments
-      5  User already exists (without --if-not-exists)
-      10 Dry-run completed
-    """
-    existing = None  # find_user(name) in real impl
-
-    if dry_run:
-        output({
-            "dry_run": True,
-            "action": "create",
-            "would_create": {"name": name, "role": role},
-            "already_exists": existing is not None,
-        })
-        sys.exit(EXIT_DRY_RUN)
-
-    if existing:
-        if if_not_exists:
-            output({**existing, "created": False, "existed": True})
-            return
-        error("conflict", f"User '{name}' already exists",
-              suggestion=f"Use --if-not-exists to skip, or: mytool user ensure --name '{name}' --role {role}",
-              exit_code=EXIT_CONFLICT)
-
-    user = {"id": "new-id", "name": name, "role": role}  # create in real impl
-    output({**user, "created": True})
-
-if __name__ == "__main__":
-    cli()
+**Pattern**:
 ```
+command import [--file PATH] [--stdin]
+
+priority order:
+1. if --file provided: read from file
+2. if --stdin flag set: read from stdin
+3. if stdin is a pipe (not a TTY): auto-read from stdin
+4. else: error "provide --file <path> or pipe input via --stdin"
+
+pipe example:  cat config.json | mytool config import
+flag example:  mytool config import --stdin < config.json
+file example:  mytool config import --file config.json
+```
+
+**Key rule**: Auto-detect pipes so agents don't need to add `--stdin` explicitly.

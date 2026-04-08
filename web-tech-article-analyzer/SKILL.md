@@ -454,21 +454,45 @@ print(json.dumps(articles, ensure_ascii=False))
 
 **CRITICAL: Default behavior is to analyze ONLY articles from the past 7 days. Do not analyze older articles unless user explicitly requests it.**
 
+### STEP 4.5: Present Article List & Wait for User Selection
+
+**After parsing the RSS feed, display the article list and wait for user to select before starting any analysis.**
+
+1. **Display numbered list** of all articles found (titles only, no analysis yet):
+
+```
+找到过去 7 天的文章 {N} 篇（{start_date} 至 {end_date}）：
+
+1. [Article Title 1] — [Date]
+2. [Article Title 2] — [Date]
+3. [Article Title 3] — [Date]
+...
+
+请告诉我你想深入分析哪几篇？可以回复编号（如"1 3 5"），也可以说"全部"。
+```
+
+2. **Wait for user response** — do NOT proceed to analysis until the user selects articles.
+
+3. **Parse user selection**:
+   - "全部" / "all" / no specific numbers → analyze all listed articles
+   - Specific numbers (e.g., "1 3 5") → analyze only those articles
+   - Range (e.g., "1-3") → analyze articles 1, 2, 3
+
+4. **Confirm selection before proceeding**:
+```
+好的，将分析以下 {M} 篇文章：
+- [Selected Title 1]
+- [Selected Title 2]
+...
+```
+
 ### STEP 5: Sequential Batch Analysis with SubAgents
 
-**Execute batch analysis using Agent tool:**
+**Execute batch analysis using Agent tool, on the user-selected articles only.**
 
-**Step 5.1: Confirm article scope and divide into groups**
+**Step 5.1: Divide selected articles into groups**
 
-Auto-confirm the scope before execution:
-```
-Found {N} articles from past 7 days ({start_date} to {end_date}).
-Proceeding with analysis of these {N} articles.
-
-Note: To analyze ALL articles (not just past 7 days), explicitly request it.
-```
-
-Then divide the filtered articles into groups:
+Take the user-selected subset and divide into groups:
 - For ≤10 articles: Use 2 subAgents (Group 1: 1-N/2, Group 2: N/2+1-N)
 - For 11-20 articles: Use 3 subAgents (Group 1: 1-N/3, Group 2: N/3+1-2N/3, Group 3: 2N/3+1-N)
 - If odd number: First group gets the extra article
@@ -783,14 +807,14 @@ take_snapshot
 - ❌ **DO NOT**: Use context-mode tools (ctx_index, ctx_search, ctx_execute) - these create search-based blind spots
 
 ### RSS/Batch Mode Behavior
-- ✅ **DO**: Automatically analyze ONLY articles from past 7 days (default behavior)
-- ✅ **DO**: Confirm article count with user before starting: "Found N articles from past 7 days. Proceeding..."
-- ✅ **DO**: Create a separate markdown file for EACH article
+- ✅ **DO**: Parse RSS and show a **title-only list** first (STEP 4.5), wait for user to select articles
+- ✅ **DO**: Only analyze articles the user has explicitly selected
+- ✅ **DO**: Create a separate markdown file for EACH selected article
 - ✅ **DO**: Include FULL detailed analysis in each file
 - ✅ **DO**: Generate README.md index file
-- ✅ **DO**: Offer to analyze ALL articles if user requests explicitly
+- ✅ **DO**: Default time window is past 7 days (unless user requests otherwise)
+- ❌ **DO NOT**: Start analysis before user confirms which articles they want
 - ❌ **DO NOT**: Analyze articles older than 7 days without explicit user request
-- ❌ **DO NOT**: Ask for confirmation on article count (auto-confirm with count)
 - ❌ **DO NOT**: Create only summary files
 
 ### Quality Requirements

@@ -76,6 +76,12 @@ Each item maps to one of the 14 principles in `10-principles.md`.
 - [ ] **P13** `--as user|bot` (or equivalent) supports explicit identity switching
 - [ ] **P13** Scope selection supports domain-level (`--domain`), exact (`--scope`), and recommended (`--recommend`) modes
 
+### Stdin Input (P15)
+- [ ] **P15** Commands that accept data support `--stdin` flag to read from stdin
+- [ ] **P15** Pipeline-oriented commands auto-detect stdin when it's a pipe (not a TTY)
+- [ ] **P15** stdin is never read when `sys.stdin.isatty()` is true (avoids blocking humans)
+- [ ] **P15** stdout output is clean and pipeable (no status noise mixed in)
+
 ### Context Budget (P14)
 - [ ] **P14** List commands support `--fields` / `--field-mask` to return only requested fields
 - [ ] **P14** List commands paginate by default (`--limit`, `--page-token`); never return unbounded results

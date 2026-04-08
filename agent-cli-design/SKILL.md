@@ -38,6 +38,9 @@ Ask for:
 - Whether agents will be the primary or secondary users
 - Any existing code or command structure to review
 
+For framework selection guidance (Go/Rust/Python/Node/Java 对比、选型决策树、CLI vs MCP benchmark 数据),
+see `references/cli-framework-selection.md`.
+
 ### Step 2: Apply the 13-Principle Framework
 
 Read `references/10-principles.md` for the full framework. Here's the quick map:
@@ -57,6 +60,8 @@ Read `references/10-principles.md` for the full framework. Here's the quick map:
 | 11. Skill Pairing | Is there a companion Skill file teaching agents *when* to use which commands? |
 | 12. Three-Layer Abstraction | Are there shortcut / API / raw layers for different granularity needs? |
 | 13. Agent Auth Patterns | Does OAuth support `--no-wait` + `--device-code` for non-blocking agent flows? |
+| 14. Context Budget | Do list commands support `--fields` and pagination to avoid context exhaustion? |
+| 15. Stdin Input | Do data-accepting commands support `--stdin` and pipe auto-detection? |
 
 ### Step 3: Mode-Specific Output
 
@@ -83,16 +88,15 @@ Show a concrete command tree before writing any code.
 
 #### Implementation Mode
 
-Provide working code for the specific feature in the user's language/framework. See
-`references/implementation-patterns.md` for ready-to-use patterns in Python/Click, Go/Cobra,
-and Rust/Clap.
+Help the user implement a specific agent-friendly feature in their language/framework of choice.
+See `references/implementation-patterns.md` for language-agnostic patterns covering each principle.
 
 For concrete design decisions on parameter design, output formats, pagination, and error
 envelopes derived from a production CLI (larksuite/cli), see
 `references/lark-cli-design-patterns.md`.
 
 Always include:
-- The implementation
+- The implementation (in the user's language/framework)
 - A test showing it works correctly in a pipe/non-TTY context
 - A note on what agent failure mode this prevents
 
