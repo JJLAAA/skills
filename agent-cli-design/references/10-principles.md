@@ -8,20 +8,9 @@ Best Practices, Berkeley BFCL, Lightning Labs lnget, 12 Factor CLI Apps.
 
 ## Why Agents Need Different CLI Design
 
-LLMs have strong "intuition" about command lines from training data (GitHub code ~5%, Stack
-Overflow ~2%, technical blogs). But this intuition has limits:
-
-- Berkeley BFCL V4: even the top-ranked model doesn't hit 100% accuracy on complex multi-step
-  tool calls
-- SWE-bench: best models solve ~70% of coding tasks — 30% failure rate
-- Surge AI case study: a frontier model spent 39 rounds, modified 693 lines of code, and still
-  failed on a 2-line fix — because it hallucinated a class name in step 1 and compounded the
-  error for 22 consecutive rounds
-
+Agents discover commands through `--help`, parse output, compose commands, and check exit codes.
 The key insight: **model capability keeps improving, but how agents use CLIs doesn't change**.
-They still run `--help`, parse output, compose commands, check exit codes. Better models make
-better decisions at each step, but if the CLI is poorly designed, even the best model falls into
-the same traps.
+If the CLI is poorly designed, even the best model falls into the same traps.
 
 ---
 
@@ -111,10 +100,6 @@ warning message leaks into stdout, JSON parsing breaks silently.
 **The versioning rule**: Once you publish structured output, it's an API. Adding a new optional
 field is safe. Changing a field's type or name is a breaking change.
 
-**Real incident**: Kubernetes v1.14 deprecated `--export`, v1.18 removed it. Thousands of Helm
-charts and CI/CD pipelines broke because they depended on that output format. Treat CLI output
-schema changes exactly like REST API version changes.
-
 **GitHub CLI model**: When output is piped, automatically switches to tab-separated format,
 removes color escape codes, doesn't truncate. Feishu CLI supports JSON, NDJSON, table, CSV,
 pretty — five formats covering all use cases.
@@ -142,9 +127,6 @@ mytool status | jq '.'
 **Why it matters for agents**: Agents almost always call CLIs in non-TTY environments. If your
 CLI shows spinners, ANSI color codes, or confirmation prompts in non-TTY mode, agents either
 get stuck or parse garbage.
-
-**Real incident**: AWS CLI v2 (2019) changed the default pager to `less`. Thousands of CI jobs
-worldwide hung because `less` is interactive. For agents, any interactive element is a wall.
 
 **Detection**: Check if stdout is a TTY at startup; if not, default to JSON output and disable all interactive elements.
 
@@ -303,10 +285,6 @@ be applied more broadly.
 **Why it matters for agents**: After an error, the error message is the agent's only repair
 signal. A vague "operation failed" forces the agent to guess. A precise error with a fix
 suggestion enables self-correction.
-
-**The 693-line spiral**: The Surge AI case study showed a model spending 22 consecutive rounds
-insisting its approach was correct, never adjusting based on error feedback. Good error messages
-should be strong enough to force the agent to reconsider its assumptions.
 
 **Feishu's pattern**: When permission is insufficient, automatically tells you which permission
 is missing and how to add it. This is the right design — the error message is a complete
