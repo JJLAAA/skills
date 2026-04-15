@@ -66,15 +66,47 @@ Before searching, clarify and structure the research.
 
 2. **Set research budget**: Default to 3 iteration rounds. If the user says "deep" or "thorough", raise to 5.
 
-3. **Decompose into sub-questions**: Break the topic into 3-7 prioritized sub-questions. Each sub-question should be independently searchable. Output them as a numbered list for transparency.
+3. **Classify the research question** to choose the right decomposition strategy:
 
-   Example for "AI Agent 框架对比":
+   Check whether the question has either of these properties:
+   - **Has temporal dimension**: needs understanding of origin, evolution, or historical trajectory
+   - **Has comparative dimension**: needs comparison with alternatives, competitors, or similar cases
+
+   | Pattern | Strategy |
+   |---|---|
+   | Both temporal + comparative | Full 横纵 framework (see below) |
+   | Temporal only | 纵向 sub-questions only |
+   | Comparative only | 横向 sub-questions only |
+   | Neither (how-to / fact lookup / single-point) | Generic decomposition |
+
+4. **Decompose into sub-questions** using the appropriate strategy:
+
+   **横纵 framework** (for topics with both temporal and comparative dimensions):
    ```
-   SQ1: What are the major AI agent frameworks available as of 2025-2026?
-   SQ2: How do they differ in architecture and design philosophy?
-   SQ3: What are the performance/scalability characteristics of each?
-   SQ4: What are the developer experience and ecosystem differences?
-   SQ5: What are known limitations and failure modes?
+   纵向 (time axis, 2-3 SQs):
+     SQ1: What is the origin and early context? Who created it, why, under what conditions?
+     SQ2: What were the key milestones and turning points? What decisions were made at each?
+     SQ3: What caused the inflection points — acceleration, stagnation, or pivots?
+
+   横向 (competitive cross-section, 2-3 SQs):
+     SQ4: Who are the main alternatives/competitors? What are the core differentiators?
+     SQ5: Why do users choose this over alternatives? What are the real-world tradeoffs?
+     SQ6: What position does it occupy in the landscape? Where is it strong/weak?
+
+   交汇 (synthesis, 1 SQ):
+     SQ7: How does the historical trajectory explain the current competitive position?
+   ```
+
+   **Generic decomposition** (for how-to, fact lookup, or single-point questions):
+   Break the topic into 3-7 prioritized sub-questions. Each should be independently searchable.
+
+   Example for "AI Agent 框架对比" (横纵 framework applies):
+   ```
+   SQ1: How did AI agent frameworks originate and evolve from 2020 to present?
+   SQ2: What were the key architectural decisions at each major version/pivot?
+   SQ3: What are the major frameworks today and their core differentiators?
+   SQ4: Why do developers choose one framework over another in practice?
+   SQ5: What does the historical trajectory reveal about each framework's current strengths/weaknesses?
    ```
 
 4. **Announce the plan** to the user: show the sub-questions and iteration budget before proceeding.
