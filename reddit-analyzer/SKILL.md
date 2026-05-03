@@ -1,6 +1,6 @@
 ---
 name: reddit-analyzer
-description: Analyzes Reddit subreddits (especially AgentsOfAI) to filter and rank high-quality technical posts. Triggers when users say "分析 Reddit", "Reddit 筛选", "AgentsOfAI 帖子", "Reddit AgentsOfAI", or provide a Reddit subreddit URL. Automatically scrapes posts, applies multi-layer filtering (interaction metrics, content rules, AI quality assessment), and returns Top 10 most valuable technical posts with engagement stats and links.
+description: Analyzes Reddit subreddits (especially AgentsOfAI) to filter and rank high-quality technical posts. Triggers when users say "分析 Reddit", "Reddit 筛选", "AgentsOfAI 帖子", "Reddit AgentsOfAI", or provide a Reddit subreddit URL. Uses tap CLI to fetch posts, applies multi-layer filtering (interaction metrics, content rules, AI quality assessment), and returns Top 10 most valuable technical posts with engagement stats and links.
 ---
 
 # Reddit Analyzer Skill
@@ -26,89 +26,41 @@ From the user's input or URL, extract the subreddit name (e.g., "AgentsOfAI", "C
 
 Do not proceed to any subsequent steps until the user provides a subreddit name.
 
-### 2. Fetch Posts Using Browser Scraping
+### 2. Fetch Posts Using tap CLI
 
-Use chrome-devtools to scrape posts:
+Run the following Bash command to fetch posts (always use `--format json` to get URLs):
 
-1. **Navigate and wait**: Open `https://www.reddit.com/r/{subreddit}/` and wait for initial load
-2. **Scroll to load more**: Execute multiple scrolls to trigger lazy loading:
-   ```javascript
-   for (let i = 0; i < 3; i++) {
-     window.scrollTo(0, document.body.scrollHeight);
-     await new Promise(r => setTimeout(r, 2000));
-   }
-   ```
-3. **Extract from multiple sources**: Try these selectors in order:
-   - `shreddit-post` elements (new Reddit)
-   - Links containing `/comments/` (universal fallback)
-   - Check for `window.__INITIAL_STATE__` or similar data structures
-
-**IMPORTANT: URL Fix** — `content-href` attribute returns paths like `/r/xxx/comments/...`. The `shreddit-post` extraction may produce URLs with double prefixes (e.g. `https://www.reddit.comhttps://www.reddit.com/r/...`). Always clean URLs before output:
-```javascript
-// Fix double-prefix URLs
-url = url.replace('https://www.reddit.comhttps://www.reddit.com', 'https://www.reddit.com');
-url = url.replace('https://reddit.comhttps://www.reddit.com', 'https://www.reddit.com');
-// Ensure path-only values get the full domain
-if (url.startsWith('/r/')) url = 'https://www.reddit.com' + url;
+```bash
+tap reddit hot --subreddit {subreddit} --limit 25 --format json
 ```
 
-Extraction code:
-```javascript
-// Method 1: shreddit-post elements (primary)
-let posts = Array.from(document.querySelectorAll('shreddit-post')).map(post => {
-  let url = post.getAttribute('content-href') || '';
-  // Fix URL: path-only needs domain prefix
-  if (url.startsWith('/r/')) url = 'https://www.reddit.com' + url;
-  return {
-    title: post.getAttribute('post-title') || '',
-    author: post.getAttribute('author') || '',
-    url: url,
-    score: parseInt(post.getAttribute('score')) || 0,
-    comments: parseInt(post.getAttribute('comment-count')) || 0,
-    created: post.getAttribute('created-timestamp') || ''
-  };
-});
+Parse the JSON output. Each item in `items` contains:
+- `rank` — position in hot listing
+- `title` — post title
+- `score` — upvote count (string, cast to int)
+- `comments` — comment count (string, cast to int)
+- `author` — username
+- `selftext` — first 150 chars of post body (empty for image/video posts)
+- `url` — full Reddit post URL
 
-// Method 2: Fallback to link extraction if Method 1 yields no data
-if (posts.length === 0) {
-  const links = Array.from(document.querySelectorAll('a[href*="/comments/"]'));
-  const seen = new Set();
-  posts = links.filter(link => {
-    const match = link.href.match(/\/comments\/([^\/]+)/);
-    if (!match || seen.has(match[1])) return false;
-    seen.add(match[1]);
-    return link.textContent.trim().length > 10;
-  }).map(link => {
-    const container = link.closest('[data-testid="post-container"]') ||
-                     link.parentElement.parentElement.parentElement;
-    const text = container ? container.textContent : '';
-    return {
-      title: link.textContent.trim(),
-      url: link.href,
-      score: parseInt((text.match(/(\d+)\s*(?:upvote|vote)/i) || ['0', '0'])[1]),
-      comments: parseInt((text.match(/(\d+)\s*comment/i) || ['0', '0'])[1]),
-      author: (text.match(/u\/([a-zA-Z0-9_-]+)/) || ['', 'unknown'])[1]
-    };
-  });
-}
-```
+**If the command fails**, inform the user: "tap 命令执行失败，请确认 tap CLI 已安装（`which tap`）并重试。"
 
-### 4. Apply Three-Layer Filtering
+### 3. Apply Three-Layer Filtering
 
 **Layer 1: Interaction Threshold**
 Keep only posts where: `score >= 10 OR comments >= 5`
 
 **Layer 2: Rule-Based Filtering**
-Exclude posts matching these patterns:
+Exclude posts matching these patterns (case-insensitive):
 
-Advertising signals (case-insensitive):
+Advertising signals:
 - "I built", "Check out", "Try my", "Free tool", "Launch", "Introducing my"
 
 Question/consultation signals:
 - "How to", "Help me", "Question", "Advice", "Any folks", "Looking for", "Need help"
 
 **Layer 3: AI Quality Assessment**
-For remaining posts (typically 10-20), analyze titles in batch to identify:
+For remaining posts, analyze `title` + `selftext` in batch to identify:
 - Technical sharing (tutorials, architecture, implementation details)
 - Practical experience (case studies, lessons learned, production insights)
 - News/research (papers, releases, industry developments)
@@ -118,27 +70,27 @@ Exclude:
 - Vague discussions without substance
 - Off-topic posts
 
-### 5. Rank and Select Top 10
+### 4. Rank and Select Top 10
 
-Rank by combined score: `score + (comments * 3)`
+Rank by combined engagement score: `score + (comments * 3)`
 
 Select the top 10 posts with highest technical value.
 
-### 6. Generate Summaries
+### 5. Generate Summaries
 
 For each of the top 10 posts, generate a 30-50 character Chinese summary that captures:
 - What the post is about (技术/工具/讨论/新闻)
 - Key value proposition or main point
 - Why it might be worth reading
 
-Keep summaries concise and actionable to help users decide whether to read the full post.
+Use `selftext` (if available) to enrich the summary beyond the title alone.
 
-### 7. Output Format
+### 6. Output Format
 
 Present results in this exact structure:
 
 ```
-## Reddit AgentsOfAI 技术帖分析结果
+## Reddit {subreddit} 技术帖分析结果
 
 基于互动指标（点赞 + 评论×3）筛选出 Top 10 高质量技术帖：
 
@@ -146,8 +98,7 @@ Present results in this exact structure:
 **标题**: [完整标题]
 **互动分**: {engagement} ({score}👍 + {comments}💬)
 **概述**: [30-50字中文概述，说明文章核心内容和价值]
-**链接**: {full_url}
-**发布**: {date}
+**链接**: {url}
 
 ---
 
@@ -155,8 +106,7 @@ Present results in this exact structure:
 **标题**: [完整标题]
 **互动分**: {engagement} ({score}👍 + {comments}💬)
 **概述**: [30-50字中文概述]
-**链接**: {full_url}
-**发布**: {date}
+**链接**: {url}
 
 ---
 
@@ -164,8 +114,7 @@ Present results in this exact structure:
 **标题**: [完整标题]
 **互动分**: {engagement} ({score}👍 + {comments}💬)
 **概述**: [30-50字中文概述]
-**链接**: {full_url}
-**发布**: {date}
+**链接**: {url}
 
 ---
 
@@ -178,24 +127,19 @@ Present results in this exact structure:
 
 ## Important Notes
 
-- **Data reliability**: Browser scraping via `shreddit-post` elements provides score, comments, and timestamp data. Scroll sufficiently (3+ times) to load enough posts.
+- **No date field**: tap CLI does not provide post timestamps. Omit the 发布 field entirely.
 - **Partial results**: If fewer than 10 posts pass all filters, output whatever remains (minimum 3 posts recommended).
-- **Date formatting**: Convert timestamps to MM-DD format.
-- **URL validation**: Always clean URLs to remove double-prefix artifacts. Ensure all URLs start with `https://www.reddit.com`.
+- **selftext for image/video posts**: Will be empty string — rely on title alone for those posts.
+- **URL format**: tap returns full URLs (e.g. `https://reddit.com/r/...`), use as-is.
 
 ## Error Handling
 
-**Browser scraping fails (no posts found)**:
-- Check if Reddit changed their HTML structure
-- Try alternative selectors (see fallback code in step 3)
-- If all methods fail, inform user: "无法获取 Reddit 数据，请稍后重试或检查网络连接"
+**tap command not found**:
+- Inform user: "未找到 tap 命令，请先安装 tap CLI"
 
-**Incomplete data (missing scores/comments)**:
-- Use available data, mark missing fields as "N/A"
-- Still apply filtering based on available metrics
-- Prioritize posts with complete data in ranking
+**JSON parse error or empty items array**:
+- Inform user: "无法获取 Reddit 数据，subreddit 名称可能有误或暂时无法访问"
 
-**Rate limiting detected**:
-- Inform user: "Reddit 速率限制，已获取部分数据"
-- Output whatever posts were successfully fetched
-- Suggest trying again in 5-10 minutes
+**Fewer than 3 posts pass filtering**:
+- Relax Layer 1 threshold to `score >= 5 OR comments >= 3` and retry
+- If still fewer than 3, output all passing posts with a note explaining the low result count
