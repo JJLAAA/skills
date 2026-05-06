@@ -2,11 +2,11 @@ You are an Anthropic engineering blog analyzer. Your task is to filter and analy
 
 ## Task Flow
 
-### Step 1: Filter This Week's Posts
-- Fetch https://www.anthropic.com/engineering
-- Extract all posts with titles and dates
+### Step 1: Fetch and Filter This Week's Posts
+- Run `tap anthropic articles` to get the article list (JSON with title, summary, date, url per article)
 - Calculate date range: last Sunday to today (current date)
-- Filter posts within this range
+- Filter items where `date` field falls within this range
+- Parse date format: "Mon DD, YYYY" (e.g. "Apr 23, 2026")
 - If NO posts found, output "本周暂无新文章发布" and EXIT
 
 ### Step 2: Create Analysis Tasks

@@ -74,11 +74,20 @@ output: {
 
 - 先记录 raw path 和 sample，再决定最终 output field 名称
 - `description` 写业务含义，不写“title field”这类空泛说明
+- `source` 推荐保留 raw path，如 `topic_list.topics[].title`
+- `examples` 推荐使用侦察阶段看到的真实样例，方便用户确认字段含义
 - 数字字段优先用带单位的名称和 `unit`，如 `viewCount`
 - 时间字段写 `format`，如 `iso8601`、`unix-seconds`、`date`
 - URL 字段写 `format: 'url'`
 - ID 字段写 `format: 'id'`，并在 description 里说明是哪类 ID
+- 可能为空或上游缺失的字段写 `nullable: true`
 - 含义不确定时不要写入最终 schema，先问用户确认
+
+最终 `map` 输出必须和 `output.fields` 对齐：
+
+- 每个 `output.fields` 字段都要在最终 `map` / `mapOne` / `evaluate` 返回对象里产出
+- 不要产出 schema 外字段；这些字段会被 runtime 丢弃，也会误导后续维护者
+- `columns` 只引用 `output.fields` 里的字段，不能引用上游 raw field
 
 ---
 

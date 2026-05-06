@@ -23,24 +23,25 @@ Calculate the date range based on today's date before fetching.
 
 ## Workflow
 
-1. **Calculate week boundaries**
+1. **Calculate week boundaries and days parameter**
    - Determine today's date
    - Find last Sunday (start of week)
    - Find this Saturday (end of week)
    - Convert to Beijing time (UTC+8)
+   - Calculate `days` = days from today back to last Sunday + 1 (to include Sunday)
 
-2. **Fetch blog page**
-   - Use WebFetch to get https://claude.com/blog
-   - Extract all posts with: title, publication date, URL, brief description
+2. **Fetch articles via TAP adapter**
+   - Run: `tap claude articles --limit 20 --days <calculated_days>`
+   - This returns all articles in the date range with title, publishedDate, category, summary, and url
 
-3. **Filter by date**
-   - Parse publication dates
-   - Keep only posts published within the current week range
+3. **Filter by week range**
+   - Parse publishedDate from the adapter output
+   - Keep only posts published within the current week range (Sunday to Saturday, Beijing time)
    - If no posts match, report "本周暂无新文章发布"
 
 4. **Generate summaries**
-   - For each post, read the full article by fetching its URL
-   - Write a 20-30 character Chinese summary focusing on:
+   - The adapter already returns a summary (first paragraph, up to 300 chars)
+   - Condense each summary to a 20-30 character Chinese version focusing on:
      - Technical details if the post is technical
      - Application scenarios if the post is about use cases
      - Follow the emphasis of the original content
@@ -68,7 +69,8 @@ Claude 博客本周文章汇总（北京时间 YYYY-MM-DD 至 YYYY-MM-DD）
 
 - Always calculate the week range dynamically based on current date
 - Use Beijing time (UTC+8) for all date comparisons
-- If a post's date is ambiguous or missing, exclude it from results
+- The TAP adapter handles page navigation, DOM extraction, and deduplication internally
+- If the adapter returns no articles, do not retry with WebFetch
 - Summaries must be in Chinese, 20-30 characters
 - Do not show recent articles if none match the current week
 - Include the full URL for each article

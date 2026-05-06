@@ -27,7 +27,8 @@
 
 ```js
 export default {
-  args: [{ name: 'limit', default: 20 }],
+  description: 'Fetch entries from the public example.com listing API.',
+  args: [{ name: 'limit', default: 20, description: 'Maximum number of entries to return.' }],
   output: {
     type: 'list',
     itemName: 'entry',
@@ -64,7 +65,8 @@ export default {
 
 ```js
 export default {
-  args: [{ name: 'limit', default: 20 }],
+  description: 'Fetch items from example.com using the logged-in browser session.',
+  args: [{ name: 'limit', default: 20, description: 'Maximum number of items to return.' }],
   output: {
     type: 'list',
     itemName: 'item',
@@ -104,7 +106,8 @@ export default {
 
 ```js
 export default {
-  args: [{ name: 'limit', default: 20 }],
+  description: 'Fetch items and their detail status from example.com.',
+  args: [{ name: 'limit', default: 20, description: 'Maximum number of items to return.' }],
   output: {
     type: 'list',
     itemName: 'item',
@@ -151,7 +154,8 @@ export default {
 
 ```js
 export default {
-  args: [{ name: 'limit', default: 20 }],
+  description: 'Capture ranking items from example.com by intercepting the page request.',
+  args: [{ name: 'limit', default: 20, description: 'Maximum number of ranking items to return.' }],
   output: {
     type: 'list',
     itemName: 'rankingItem',
@@ -202,7 +206,8 @@ export default {
 
 ```js
 export default {
-  args: [{ name: 'limit', default: 20 }],
+  description: 'Extract rendered links from the example.com list page.',
+  args: [{ name: 'limit', default: 20, description: 'Maximum number of links to return.' }],
   output: {
     type: 'list',
     itemName: 'link',

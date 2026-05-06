@@ -28,7 +28,7 @@ Given user input `20260314`:
 Calculate weekStart and weekEnd from user input, then run:
 
 ```
-tap openai engineering --category "Research,Engineering" --startDate YYYY-MM-DD --endDate YYYY-MM-DD --format json
+tap openai articles --category "Research,Engineering" --startDate YYYY-MM-DD --endDate YYYY-MM-DD --format json
 ```
 
 The command outputs JSON: `{ meta, schema, items: [...] }`.

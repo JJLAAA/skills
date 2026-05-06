@@ -1,9 +1,10 @@
 ---
 tests:
-  - name: "Filter posts within date range"
+  - name: "Fetch and filter posts via tap"
     input: "分析本周 Anthropic 博客"
     expected_behavior: |
-      - Fetches https://www.anthropic.com/engineering
+      - Runs `tap anthropic articles` to get structured article list
+      - Parses JSON response, extracts date field from each item
       - Calculates last Sunday to today date range
       - Filters posts by date
       - If no posts, outputs "本周暂无新文章发布" and exits
