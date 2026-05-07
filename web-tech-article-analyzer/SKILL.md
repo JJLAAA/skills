@@ -1,6 +1,6 @@
 ---
 name: web-tech-article-analyzer
-description: This skill should be used when the user provides a URL or technical article content that needs deep analysis using a 7-layer analytical framework. It applies the systematic methodology covering Problem Space, Architecture Design, Implementation, Quality Assurance, Production Engineering, Experience Distillation, and Cross-domain Connections. Intelligently routes between single article mode (console output) and RSS/batch mode (file output). Outputs are in Chinese with English technical terms preserved, featuring structured analysis with metrics, architectural insights, and actionable knowledge extraction.
+description: This skill should be used when the user provides a URL or technical article content that needs deep analysis using a 7-layer analytical framework. It applies the systematic methodology covering Problem Space, Architecture Design, Implementation, Quality Assurance, Production Engineering, Experience Distillation, and Cross-domain Connections. Intelligently routes between short-article direct reading, medium/long-article context-mode indexed reading, and RSS/batch mode. Outputs are in Chinese with English technical terms preserved, featuring structured analysis with metrics, architectural insights, completeness checks, and actionable knowledge extraction.
 ---
 
 # Web Tech Article Analyzer
@@ -11,6 +11,11 @@ This skill specializes in efficiently deconstructing web-based technical content
 
 - **Single Article Mode**: Fetch, analyze, and output detailed analysis directly to the console (no file creation)
 - **RSS/Batch Mode**: Parse RSS feeds, analyze multiple articles in parallel, and save each analysis to a local markdown file with a generated README index
+
+For single articles, choose the reading strategy by content size and fidelity needs:
+
+- **Short Article Direct Mode**: For short, simple articles that fit comfortably in context, read the complete content directly. This preserves completeness and avoids search-induced blind spots.
+- **Indexed Long Article Mode**: For medium/long articles or noisy pages, use context-mode as a local full-text index, then perform structured multi-query retrieval, exact spot checks, and coverage validation.
 
 All outputs are strictly neutral, data-driven, and structured, with Reddit content integrating community wisdom from comments.
 
@@ -160,19 +165,48 @@ Use this skill when:
 | **工具介绍文** | 功能介绍、使用方法、与同类对比 | 工具定位 + 优劣势 + 适用场景 |
 | **混合类型** | 兼具多种特征 | 以主要特征为主，兼顾次要特征 |
 
+### STEP 2.5: Context Strategy Selection
+
+**Before deep reading, choose one strategy. Optimize for fidelity first, then context efficiency.**
+
+| Strategy | Use when | Tools | Completeness rule |
+|---|---|---|---|
+| **Short Article Direct Mode** | Article is short/simple enough to read fully in context, roughly ≤8k Chinese chars / ≤5k English words, or user needs one-off analysis | `webReader`, direct content, or `chrome-devtools` + direct Read | Read the whole article directly. Do not use context-mode because retrieval adds avoidable blind spots. |
+| **Standard Indexed Mode** | Medium/long article, many code blocks/tables, noisy HTML, or user will ask follow-ups | `ctx_fetch_and_index` / `ctx_index` + `ctx_search`, with exact direct spot checks for critical fragments | First extract structure, then search by chapter and analysis dimension. Do coverage check before final output. |
+| **Strict Indexed Mode** | Important long article, high-fidelity analysis, many numbers/code/configs, or user asks to avoid information loss | Same as Standard Indexed Mode plus chapter-by-chapter fact extraction and conclusion backtrace | Separate facts from interpretation. Every major conclusion must cite source section/fragment. |
+
+**Decision heuristics:**
+- If the full article can be read once without crowding the context window, prefer **Short Article Direct Mode**.
+- If direct reading would require many large snapshots/segments, prefer **Standard Indexed Mode**.
+- If the task is legal/compliance/line-by-line review/full translation/zero-omission extraction, state that context-mode alone is not sufficient; use direct full-text or chapter-by-chapter exact extraction.
+- For Reddit and login-gated pages, follow domain rules first. If using `chrome-devtools`, choose direct Read for short pages and `ctx_index` for long/noisy snapshots.
+
+**Indexed Mode workflow:**
+1. Build index with `ctx_fetch_and_index` for URLs or `ctx_index` for already fetched/local content.
+2. Extract article structure first: title, headings, sections, content types (code/table/image/formula/reference).
+3. Search by chapters or headings, not only by generic summary prompts.
+4. Run multi-perspective queries: problem/motivation, architecture/design, implementation/code, tradeoff/limitation, performance/benchmark, security/risk, testing/validation, conclusion/takeaway.
+5. Precisely spot-check code blocks, CLI commands, configs, API params, benchmark numbers, tables, formulas, and strong claims (`must`, `should`, `never`, `only`) with direct extraction when possible.
+6. Produce fact notes first, then analysis. Mark unsupported analysis as inference.
+7. Run coverage validation against the structure: list unexamined sections, missing code/table/data, and any low-confidence conclusions; search again if gaps matter.
+
 ### STEP 3: Two-Pass Deep Reading & Analysis
 
 **All outputs are in Chinese. Preserve English technical terms (e.g., `PagedAttention`, `vLLM`). Output directly to console — DO NOT use Write tool.**
 
-**Two-pass reading is mandatory for all single article analysis. The goal is to avoid shallow first-impression bias — the second pass often reveals nuances, implicit assumptions, and structural logic that the first pass misses.**
+**Two-pass reading is mandatory for all single article analysis. In Direct Mode, both passes operate on complete article content. In Indexed Mode, Pass 1 uses structure + broad retrieval, and Pass 2 uses targeted chapter/dimension retrieval plus exact spot checks. The goal is to avoid shallow first-impression bias — the second pass often reveals nuances, implicit assumptions, and structural logic that the first pass misses.**
 
 #### Pass 1: Initial Read (Quick Comprehension)
 
-Read through the article once to build a mental model:
+Build a mental model:
 - What is the author's main claim or goal?
 - What is the overall structure and flow?
 - Which sections seem most important?
 - What questions or uncertainties arise?
+
+Direct Mode: read through the article once.
+
+Indexed Mode: retrieve structure first, then broad chapter summaries. Do not form conclusions from one search result.
 
 Do NOT output anything yet. Internally note your first impressions and any gaps in understanding.
 
@@ -185,6 +219,8 @@ Re-read the article with focused attention, now that you have the full picture:
 - Identify what the author chose NOT to say (omissions)
 - Check for internal consistency across sections
 - Extract all data points, metrics, and specific examples
+
+Indexed Mode: run targeted searches for each important heading and each analysis dimension. Exact-check all critical code/data/config fragments before finalizing.
 
 Only after completing both passes, generate the final output below.
 
@@ -664,16 +700,17 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 ### Single Article Mode
 1. **Console output only**: Display analysis directly in conversation, no file creation
 2. **Type detection first**: Identify article type (技术观点文/教程实操文/经验分享文/工具介绍文) before generating analysis
-3. **Type-specific template**: Use the matching output template from STEP 3
-4. **No Write tool**: Do NOT create any markdown files
+3. **Context strategy first**: Choose Direct Mode for short/simple articles; choose Standard/Strict Indexed Mode for medium/long articles
+4. **Type-specific template**: Use the matching output template from STEP 3
+5. **No Write tool**: Do NOT create any markdown files
 
 ### RSS/Batch Mode
-1. **Automatic batch processing**: For RSS feeds/blog homepages, automatically analyze all articles from past 7 days
+1. **Selection-gated batch processing**: For RSS feeds/blog homepages, list articles from the past 7 days and wait for user selection
 2. **Sequential execution**: Use 2-3 subAgents running in FOREGROUND mode (not parallel)
 3. **Context-efficient**: SubAgents use ctx_fetch_and_index + ctx_search to avoid context pollution
 4. **File output**: Create individual markdown files + README.md index
 5. **Complete analysis**: Each article gets FULL detailed analysis, not summaries
-6. **No confirmation needed**: Proceed directly with analysis after detection
+6. **Confirmation required**: Do not analyze RSS articles until the user selects articles in STEP 4.5
 
 ### General Guidelines
 1. **Judgment first**: Never proceed to analysis without completing STEP 0 (URL type detection)
@@ -697,7 +734,7 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 - **mcp__chrome-devtools***: Required for Reddit content and mandatory when login/anti-scraping interception is detected
 - **Read**: For reading snapshot files in segments when using chrome-devtools
 - **WebSearch**: For supplementing context when needed
-- **⚠️ DO NOT use context-mode tools** (ctx_index, ctx_search, ctx_execute) in Single Article Mode - read content directly to ensure completeness
+- **mcp__context-mode__ctx_fetch_and_index / ctx_index / ctx_search**: Use only for Standard/Strict Indexed Mode when the article is too long/noisy for reliable direct reading
 
 ### RSS/Batch Mode
 - **Agent**: For creating sequential subAgents during batch article analysis
@@ -726,15 +763,15 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 ### Single Article Mode
 0. **Check domain rules first**: Read `references/domain-specific-rules.md` — some domains (e.g., reddit.com, linux.do) require specific tools
 1. **For Reddit URLs**: Use `chrome-devtools` to navigate and capture full content including comments
-2. **For technical articles**: Use `webReader` with markdown format only when no interception appears
+2. **For technical articles**: Use `webReader` with markdown format only when no interception appears, then choose Direct vs Indexed Mode using STEP 2.5
 3. **If login-state/anti-scraping interception appears** (any domain): immediately switch to `chrome-devtools`; do NOT attempt other fetch methods first
-4. **For content already provided**: Skip fetching, proceed directly to analysis
+4. **For content already provided**: Skip fetching, then choose Direct vs Indexed Mode using STEP 2.5
 
 ### When using chrome-devtools in Single Article Mode
 
-**CRITICAL: Read snapshot content directly, do NOT use context-mode tools**
+**Choose direct Read for short snapshots; index long/noisy snapshots.**
 
-After `take_snapshot`, the output is saved to a file. Read it directly using the Read tool:
+After `take_snapshot`, the output is saved to a file. For short snapshots, read it directly using the Read tool:
 
 ```
 take_snapshot
@@ -746,17 +783,30 @@ Perform Two-Pass Deep Reading on the complete content
 Generate analysis based on full understanding
 ```
 
-**Why direct reading instead of ctx_search?**
+For long/noisy snapshots, use the Indexed Mode pattern:
+
+```
+take_snapshot
+  ↓
+ctx_index(content=<snapshot_text>, source="<article-slug>")
+  ↓
+ctx_search with structure, chapter, and analysis-dimension queries
+  ↓
+exact spot checks for code/data/config fragments
+  ↓
+coverage validation before final analysis
+```
+
+**Why prefer direct reading for short articles?**
 - Technical article analysis requires understanding the complete structure
 - Search-based approaches may miss chapters/sections with unexpected keywords
 - "Two-Pass Deep Reading" requires seeing the full content, not search results
-- Completeness is more important than token optimization for article analysis
+- Completeness is more important than token optimization when the article fits comfortably in context
 
-**How to read large snapshots:**
+**How to handle large snapshots:**
 - Use Read tool with offset and limit parameters
-- Read in segments of 3000-5000 lines
-- Continue until you've read the entire file
-- Then perform the two-pass analysis on your complete understanding
+- If the whole snapshot can be read without context pressure, read in segments of 3000-5000 lines until complete
+- If it would crowd the context window, index it and follow Standard/Strict Indexed Mode
 
 ### RSS/Batch Mode
 1. **For RSS feed parsing**: Use `scripts/rss_parser.py` to parse feed and extract articles
@@ -764,13 +814,13 @@ Generate analysis based on full understanding
 3. **If interception appears during article fetching**: switch immediately to `chrome-devtools`; do NOT retry other fetch methods
 4. **For parallel processing**: Use TaskTool to launch multiple subAgents
 
-### ⚠️ Gotchas (RSS/Batch Mode ONLY - subAgents using chrome-devtools)
+### ⚠️ Gotchas (Indexed Mode and RSS/Batch subAgents using chrome-devtools)
 
-**`take_snapshot` dumps the full a11y tree into context — subAgents must index it immediately.**
+**`take_snapshot` can dump the full a11y tree into context — long/noisy snapshots should be indexed immediately.**
 
-This applies to RSS/Batch subAgents when they use `chrome-devtools`. The raw snapshot must never sit in the subAgent's context window during analysis.
+This applies to Standard/Strict Indexed Mode and RSS/Batch subAgents when they use `chrome-devtools`. The raw snapshot should not sit in context during analysis when it is too large for direct reading.
 
-**Note**: This does NOT apply to Single Article Mode, which should read snapshot content directly using the Read tool instead of using context-mode tools.
+**Note**: Short Article Direct Mode should read snapshot content directly using the Read tool instead of using context-mode tools.
 
 **Required pattern whenever `take_snapshot` is called:**
 ```
@@ -797,14 +847,16 @@ take_snapshot
 ### Single Article Mode Behavior
 - ✅ **DO**: Output analysis directly to console
 - ✅ **DO**: Detect article type first, then apply the matching template
+- ✅ **DO**: Choose Short Article Direct Mode vs Standard/Strict Indexed Mode before deep analysis
 - ✅ **DO**: Display results in conversation
 - ✅ **DO**: Switch directly to `chrome-devtools` when login-state or anti-scraping interception is encountered
-- ✅ **DO**: Read snapshot files directly using Read tool (with offset/limit for large files)
-- ✅ **DO**: Perform Two-Pass Deep Reading on complete content for comprehensive understanding
+- ✅ **DO**: Read short articles/snapshots directly using Read tool
+- ✅ **DO**: Use context-mode indexing for medium/long articles when direct reading would create context pressure
+- ✅ **DO**: Perform Two-Pass Deep Reading using the selected strategy
 - ❌ **DO NOT**: Create any markdown files
 - ❌ **DO NOT**: Use Write tool
 - ❌ **DO NOT**: Try `webReader`/`curl`/`fetch` retries after interception is detected
-- ❌ **DO NOT**: Use context-mode tools (ctx_index, ctx_search, ctx_execute) - these create search-based blind spots
+- ❌ **DO NOT**: Use context-mode for short/simple articles where direct full reading is cheaper and more complete
 
 ### RSS/Batch Mode Behavior
 - ✅ **DO**: Parse RSS and show a **title-only list** first (STEP 4.5), wait for user to select articles
@@ -905,6 +957,9 @@ Step 2: Detect source/type exactly as Single Article Mode
 - Run STEP 2 (type detection for technical article)
 
 Step 3: Analyze exactly as Single Article Mode
+- Choose context strategy first:
+  - Short/simple article → direct full reading is acceptable
+  - Medium/long/noisy article → use Standard/Strict Indexed Mode with structure extraction, multi-query retrieval, exact spot checks, and coverage validation
 - Run mandatory Two-Pass Deep Reading
 - Output MUST use the exact matching template from Single Article Mode:
   - Reddit → Reddit Mode Output
