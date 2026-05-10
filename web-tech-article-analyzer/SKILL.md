@@ -1,6 +1,6 @@
 ---
 name: web-tech-article-analyzer
-description: This skill should be used when the user provides a URL or technical article content that needs deep analysis using a 7-layer analytical framework. It applies the systematic methodology covering Problem Space, Architecture Design, Implementation, Quality Assurance, Production Engineering, Experience Distillation, and Cross-domain Connections. Intelligently routes between short-article direct reading, medium/long-article context-mode indexed reading, and RSS/batch mode. Outputs are in Chinese with English technical terms preserved, featuring structured analysis with metrics, architectural insights, completeness checks, and actionable knowledge extraction.
+description: Deep analysis of web technical articles, URLs, and blog posts using a 7-layer analytical framework (Problem Space → Cross-domain Connections). Supports single-article analysis with intelligent reading strategy (direct vs indexed), and RSS/batch mode for bulk processing. Handles Reddit, X/Twitter, arxiv, GitHub, and technical blogs. Special support for Simon Willison's blog (simonwillison.net) and Claude/Anthropic blog (claude.com/blog) via tap CLI with article listing and selective analysis. Outputs in Chinese with English technical terms preserved. Use this skill whenever the user provides a URL to analyze, mentions simonwillison, Simon Willison's blog, claude.com/blog, Anthropic blog, wants to browse articles from a blog, provides technical article content for analysis, or mentions analyzing/deconstructing/summarizing a technical article — even if they don't explicitly ask for "deep analysis."
 ---
 
 # Web Tech Article Analyzer
@@ -87,6 +87,8 @@ This framework ensures comprehensive analysis that extracts actionable knowledge
 
 Use this skill when:
 - User provides a URL from technical sites (reddit.com, arxiv.org, github.com, technical blogs, etc.)
+- User wants to browse or analyze Simon Willison's blog articles (simonwillison.net)
+- User wants to browse or analyze Claude blog articles (claude.com/blog)
 - User provides technical article content that needs summarization or analysis
 - User wants to extract key insights, metrics, or architectural details from web content
 - User needs community feedback analysis from Reddit technical discussions
@@ -136,10 +138,16 @@ Use this skill when:
 **Execute source detection before any analysis:**
 
 1. **When input is URL:**
+   - Detect domain: `x.com` or `twitter.com` → **X Tweet Mode**
    - Detect domain: `reddit.com` (including mobile/legacy domains) → **Reddit Mode**
+   - Detect domain: `simonwillison.net` → **Simon Willison Mode**
+   - Detect domain: `claude.com` → **Claude Blog Mode**
    - Other domains → **Technical Article Mode**
    - Call appropriate tools:
-     - Reddit Mode: Use chrome-devtools to fetch body + Top 5 comments
+     - X Tweet Mode: Run `tap x tweet --url {url}` via Bash — do NOT use chrome-devtools or context-mode
+     - Reddit Mode: Run `tap reddit thread --url {url}` via Bash — do NOT use chrome-devtools or context-mode
+     - Simon Willison Mode: Run `tap simonwillison post --url {url}` via Bash — do NOT use chrome-devtools or context-mode
+     - Claude Blog Mode: Run `tap claude post --url {url}` via Bash — do NOT use chrome-devtools or context-mode
      - Technical Article Mode: Use webReader first for clean extraction, but if any login/anti-scraping block appears, immediately switch to chrome-devtools
 
 2. **When input is direct content:**
@@ -148,8 +156,58 @@ Use this skill when:
 
 3. **Exception handling:**
    - 404/empty content → Return: `ERROR: Content fetch failed [URL]`
-   - Login-gated / anti-scraping blocked content (e.g., 401/403, captcha/challenge page, "sign in to continue") → immediately use chrome-devtools and do NOT try other fetch methods
+   - Login-gated / anti-scraping blocked content (e.g., 401/403, captcha/challenge page, "sign in to continue") → immediately use chrome-devtools and do NOT try other fetch methods (does not apply to X/Twitter, Reddit, Simon Willison, or Claude Blog — use tap CLI only)
    - Non-technical content (news/video/shopping) → Return: `ERROR: Only technical content supported [type]`
+
+### X Tweet Mode
+
+For `x.com` or `twitter.com` URLs, fetch content exclusively via the `tap` CLI:
+
+```bash
+tap x tweet --url {url}
+```
+
+- Run this as a Bash command; the output is the tweet/thread content.
+- Do NOT fall back to chrome-devtools, webReader, or context-mode for X URLs.
+- After fetching, analyze the content using the Technical Article Mode output templates (or Reddit Mode Output if the thread resembles a community discussion), applying the same 7-layer framework as appropriate.
+
+### Simon Willison Mode
+
+For `simonwillison.net` URLs or when user wants to browse Simon Willison's blog, use the `tap` CLI exclusively.
+
+**Workflow:**
+
+1. **List articles** — Run `tap simonwillison articles` via Bash to get the article list
+2. **Present list and wait for user selection** — Display the article list with numbered entries, ask user which articles to analyze (same pattern as RSS Mode STEP 4.5)
+3. **Fetch selected article content** — For each selected article, run:
+   ```bash
+   tap simonwillison post --url {url}
+   ```
+4. **Analyze** — Use Technical Article Mode output templates (A/B/C/D) with the same 7-layer framework
+
+**Rules:**
+- Do NOT use chrome-devtools, webReader, or context-mode for Simon Willison content — `tap` CLI handles everything
+- Do NOT start analysis until user confirms which articles they want to analyze
+- Output directly to console for single article; use Write tool for batch analysis (same as RSS Mode)
+
+### Claude Blog Mode
+
+For `claude.com` URLs or when user wants to browse Claude's official blog, use the `tap` CLI exclusively.
+
+**Workflow:**
+
+1. **List articles** — Run `tap claude articles` via Bash to get the article list
+2. **Present list and wait for user selection** — Display the article list with numbered entries, ask user which articles to analyze (same pattern as RSS Mode STEP 4.5)
+3. **Fetch selected article content** — For each selected article, run:
+   ```bash
+   tap claude post --url {url}
+   ```
+4. **Analyze** — Use Technical Article Mode output templates (A/B/C/D) with the same 7-layer framework
+
+**Rules:**
+- Do NOT use chrome-devtools, webReader, or context-mode for Claude blog content — `tap` CLI handles everything
+- Do NOT start analysis until user confirms which articles they want to analyze
+- Output directly to console for single article; use Write tool for batch analysis (same as RSS Mode)
 
 ### STEP 2: Identify Article Type
 
@@ -179,7 +237,7 @@ Use this skill when:
 - If the full article can be read once without crowding the context window, prefer **Short Article Direct Mode**.
 - If direct reading would require many large snapshots/segments, prefer **Standard Indexed Mode**.
 - If the task is legal/compliance/line-by-line review/full translation/zero-omission extraction, state that context-mode alone is not sufficient; use direct full-text or chapter-by-chapter exact extraction.
-- For Reddit and login-gated pages, follow domain rules first. If using `chrome-devtools`, choose direct Read for short pages and `ctx_index` for long/noisy snapshots.
+- For Reddit pages, follow domain rules first — use `tap reddit thread --url {url}` exclusively. For login-gated pages, use `chrome-devtools`. Choose direct Read for short pages and `ctx_index` for long/noisy snapshots.
 
 **Indexed Mode workflow:**
 1. Build index with `ctx_fetch_and_index` for URLs or `ctx_index` for already fetched/local content.
@@ -717,6 +775,7 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 2. **Interception handling (critical)**:
    - If you hit login-state interception or anti-scraping interception at any point, switch directly to `chrome-devtools` immediately
    - Do NOT retry `webReader`, `curl`, `fetch`, or any other non-browser fetch path after interception is detected
+   - Exception: X/Twitter, Reddit, Simon Willison, and Claude Blog always use `tap` CLI — never chrome-devtools or context-mode
 3. **Location marking**:
    - Sections: Use percentage ranges ([25-40%])
    - Reddit comments: Mark `[评论区: Top N]`
@@ -730,8 +789,13 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 ## Available Tools
 
 ### Single Article Mode
+- **tap x tweet --url {url}** (Bash): Exclusive tool for `x.com` / `twitter.com` URLs — do NOT use chrome-devtools or context-mode for X
+- **tap reddit thread --url {url}** (Bash): Exclusive tool for `reddit.com` URLs — do NOT use chrome-devtools or context-mode for Reddit
+- **tap simonwillison articles** (Bash): List Simon Willison's blog articles — do NOT use chrome-devtools or context-mode
+- **tap simonwillison post --url {url}** (Bash): Fetch Simon Willison's blog post content — do NOT use chrome-devtools or context-mode
+- **tap claude articles** (Bash): List Claude blog articles — do NOT use chrome-devtools or context-mode
+- **tap claude post --url {url}** (Bash): Fetch Claude blog post content — do NOT use chrome-devtools or context-mode
 - **mcp__web_reader__webReader**: Primary tool for clean extraction on non-blocked technical articles
-- **mcp__chrome-devtools***: Required for Reddit content and mandatory when login/anti-scraping interception is detected
 - **Read**: For reading snapshot files in segments when using chrome-devtools
 - **WebSearch**: For supplementing context when needed
 - **mcp__context-mode__ctx_fetch_and_index / ctx_index / ctx_search**: Use only for Standard/Strict Indexed Mode when the article is too long/noisy for reliable direct reading
@@ -762,9 +826,12 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 
 ### Single Article Mode
 0. **Check domain rules first**: Read `references/domain-specific-rules.md` — some domains (e.g., reddit.com, linux.do) require specific tools
-1. **For Reddit URLs**: Use `chrome-devtools` to navigate and capture full content including comments
-2. **For technical articles**: Use `webReader` with markdown format only when no interception appears, then choose Direct vs Indexed Mode using STEP 2.5
-3. **If login-state/anti-scraping interception appears** (any domain): immediately switch to `chrome-devtools`; do NOT attempt other fetch methods first
+1. **For X/Twitter URLs** (`x.com`, `twitter.com`): Run `tap x tweet --url {url}` via Bash. Never use chrome-devtools or context-mode.
+2. **For Reddit URLs**: Run `tap reddit thread --url {url}` via Bash. Never use chrome-devtools or context-mode.
+3. **For Simon Willison URLs** (`simonwillison.net`) or requests to browse Simon Willison's blog: Run `tap simonwillison articles` to list articles, wait for user selection, then run `tap simonwillison post --url {url}` for each selected article. Never use chrome-devtools or context-mode.
+4. **For Claude Blog URLs** (`claude.com`) or requests to browse Claude's blog: Run `tap claude articles` to list articles, wait for user selection, then run `tap claude post --url {url}` for each selected article. Never use chrome-devtools or context-mode.
+5. **For technical articles**: Use `webReader` with markdown format only when no interception appears, then choose Direct vs Indexed Mode using STEP 2.5
+5. **If login-state/anti-scraping interception appears** (any domain): immediately switch to `chrome-devtools`; do NOT attempt other fetch methods first
 4. **For content already provided**: Skip fetching, then choose Direct vs Indexed Mode using STEP 2.5
 
 ### When using chrome-devtools in Single Article Mode

@@ -32,16 +32,6 @@ export default {
 };
 ```
 
-最小模板仍然必须完整填写这些字段：
-
-- 顶层 `description`
-- 每个 `args[]` 的 `name`、`default`、`description`
-- `output.type`
-- `output.itemName`
-- 每个 `output.fields.*` 的 `type`、`description`
-- `columns`
-- `pipeline`
-
 ---
 
 ## 完整示例：登录态 API
@@ -176,12 +166,8 @@ tap <site> <command> --keyword "搜索词"
 
 ## 命名规范
 
-- `<site>`：稳定小写 slug，通常是品牌名或域名主体，如 `openai`、`reddit`、`simonwillison`
-- `<command>`：稳定小写 kebab-case，表示数据集合或站点原生入口，如 `articles`、`posts`、`hot`、`trending`
-- 列表型数据优先用复数名词：`articles`、`videos`、`topics`
-- 分类、关键词、时间范围优先做成 `args`，不要塞进 command
-- 同一实体不要重复建多个 site；如确实区分产品站和公司站，要在 description 里说明边界
-- 已有命令不要随意改名；改名需要兼容入口或明确迁移说明
+- `<site>`：站点域名主体，小写，如 `bilibili`、`linuxdo`、`github`
+- `<command>`：数据类型或动作，小写，如 `hot`、`news`、`trending`
 - 顶层 `description`：一句话说明 adapter 返回什么数据、来自哪个站点/范围，用于 `tap schema` 全局命令发现
 - `args[].description`：说明参数业务含义和取值方式，避免 Agent 猜参数
 - `output.fields` 字段名：camelCase，含义清晰，必要时带单位（如 `viewCount` 而非 `play`）
@@ -198,19 +184,3 @@ tap <site> <command> --keyword "搜索词"
 | JSON 输出缺字段 | `map` 输出的 key 和 `output.fields` 不一致 | 对齐 schema 和 map 字段名 |
 | 表格列顺序不对 | `columns` 顺序决定列顺序 | 调整 `columns` 数组顺序 |
 | 需要浏览器但报错 | Chrome 未开启调试端口 | 启动 Chrome 加 `--remote-debugging-port=9222` |
-
-## 写入前结构校验
-
-```js
-// 人工核对，不需要写进 adapter 文件
-const schemaFields = Object.keys(output.fields);
-const mapFields = Object.keys(finalMappedObject);
-```
-
-- `schemaFields` 不能为空
-- `mapFields` 必须覆盖所有 `schemaFields`
-- `mapFields` 不应包含 schema 外字段
-- `columns` 必须全部存在于 `schemaFields`
-- 字段有单位时补 `unit`
-- 字段是 URL / ID / 时间时补 `format`
-- 字段可能缺失时补 `nullable: true`

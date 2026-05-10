@@ -2,6 +2,7 @@
 name: tap-adapter-author
 description: Use when writing a TAP adapter for a new site or command. Guides from reconnaissance through pipeline assembly, installation, and verification.
 allowed-tools: Bash, Read, Write, Edit
+compatibility: Requires installed tap CLI, chrome-devtools tool access for reconnaissance, a usable tap browser session when browser/login state is needed, and network access to the target site.
 ---
 
 # tap-adapter-author
@@ -9,6 +10,8 @@ allowed-tools: Bash, Read, Write, Edit
 你是给 TAP 写适配器的 agent。目标：**从零到 `tap <site> <command>` 输出正确数据的完整闭环**。
 
 TAP 适配器是纯声明式的——没有自定义函数，只有 pipeline 步骤。
+
+开始前，先简短提醒用户本 workflow 需要：已安装可运行的 `tap` CLI；可用于侦察的 `chrome-devtools` 工具访问；当目标站点需要浏览器或登录态时，有可用的 `tap browser start` 浏览器会话；并且当前环境能访问目标站点和候选端点。
 
 ---
 
@@ -23,11 +26,12 @@ START
   ▼
 判断获取模式（→ references/patterns.md）
   │
-  ├─ Pattern A: 公开 JSON API         → 直接 fetch
-  ├─ Pattern B: 需要登录态的 API      → navigate + browserFetch
-  ├─ Pattern C: 多请求 list-detail    → as + from + foreach
-  ├─ Pattern D: XHR/fetch 请求被隐藏  → intercept
-  └─ Pattern E: 数据在页面 DOM 里     → navigate + evaluate(DOM)
+  ├─ Pattern A: 公开 JSON API              → 直接 fetch
+  ├─ Pattern B: 需要登录态的 JSON API      → navigate + browserFetch
+  ├─ Pattern C: 多请求 list-detail         → as + from + foreach
+  ├─ Pattern D: XHR/fetch 请求被隐藏       → intercept
+  ├─ Pattern E: 数据在页面 DOM 里          → navigate + evaluate(DOM)
+  └─ Pattern F: 登录态 HTML partial 接口   → navigate + evaluate(fetch+DOMParser)
   │
   ▼
 验证 API 端点可访问（curl / fetch 测试）
@@ -56,24 +60,47 @@ DONE
 ## Runbook
 
 ```
+[ ] 0. 提醒运行依赖
+       [ ] 简短提醒用户：需要已安装可运行的 tap CLI
+       [ ] 需要 chrome-devtools 工具访问来做页面和 Network 侦察
+       [ ] 目标站点需要浏览器或登录态时，需要可用的 tap browser start 浏览器会话
+       [ ] 需要能访问目标站点和候选 endpoint 的网络
+
 [ ] 1. 明确目标
        [ ] 站点域名是什么？
        [ ] 想抓什么数据（列表 / 单条 / 排行）？
        [ ] 用户需要哪些参数（limit / keyword / category）？
 
 [ ] 2. 侦察获取模式
-       [ ] 在浏览器打开目标页面，打开 DevTools → Network 过滤 XHR/Fetch
-       [ ] 观察：请求是否有 JSON 响应？URL 是否可以直接 curl？
-       [ ] 判定 Pattern（A / B / C / D / E），见 references/patterns.md
-       ✋ 向用户汇报：Pattern 判断结果 + API 端点 URL，等待确认后再继续
+       [ ] 先确认页面可访问和登录态：
+           [ ] navigate 打开目标页面，确认是否 200 可正常渲染
+           [ ] 页面是否包含目标数据（不是 login wall / captcha / blocked）？
+           [ ] TAP browser 是否已登录目标站点？
+       [ ] 侦察 DOM（现代站点必做）：
+           [ ] 是否有 custom element（如 <shreddit-post>、<faceplate-*>）携带 attributes 数据？
+           [ ] 是否有 script[type="application/json"] 或 hydration 全局变量（__NEXT_DATA__、__NUXT__ 等）？
+           [ ] 是否有 infinite-scroll loader 元素（含 src / href / data-cursor / slot="load-after"）？
+       [ ] 侦察 Network：
+           [ ] XHR/Fetch 有 JSON 响应？URL 是否可直接 curl？
+           [ ] 有同源 HTML partial endpoint（/svc/、/_next/、/api/ 等返回 HTML 片段）？
+           [ ] 有 GraphQL / RSC / server component payload？
+           [ ] infinite-scroll 翻页请求的 URL 和 cursor 参数？
+       [ ] 判定 Pattern（A / B / C / D / E / F），见 references/patterns.md
+       ✋ 向用户汇报：Pattern 判断结果 + 候选 endpoint URL，等待确认后再继续
 
 [ ] 3. 验证端点
-       [ ] Pattern A：直接 curl 或 fetch 验证
-       [ ] Pattern B：需要浏览器 cookie → 检查是否需要先登录
+       [ ] Pattern A：直接 curl 或 fetch 验证，确认 200 + JSON + 含目标数据
+       [ ] Pattern B：需要浏览器 cookie → 检查是否需要先登录，browserFetch 测试
        [ ] Pattern C：确认列表接口和详情接口，优先用 as/from/foreach 表达
        [ ] Pattern D：在 Network Tab 找到被拦截的请求 URL
        [ ] Pattern E：确认数据在 DOM 里可用 document.querySelector 取到
-       [ ] 确认：响应 200 + 非 HTML + 含目标数据
+       [ ] Pattern F：在浏览器上下文 fetch 同源 HTML partial，DOMParser 解析后确认含目标 item
+       ⛔ 端点返回 403 或 HTML 时的判断门禁（不得直接跳 OAuth）：
+           [ ] 先打开页面本身，确认浏览器已登录、页面正常渲染
+           [ ] 侦察 DOM 是否包含结构化 custom element attributes
+           [ ] 侦察同源 partial/GraphQL/HTML endpoint（/svc/、/api/、/_next/ 等）
+           [ ] 在浏览器上下文 fetch 候选 URL，带 credentials: include
+           [ ] 以上全部路径验证失败后，才能引入 token/apiKey/accessToken 参数
 
 [ ] 4. 解码字段
        [ ] 找到 API 响应中目标字段的路径（可能有嵌套，如 data.list[0].title）
@@ -83,14 +110,15 @@ DONE
        ✋ 向用户汇报：列出全部候选字段 + 每个字段的示例值和含义判断，询问用户需要哪些字段
 
 [ ] 5. 设计接口
-       [ ] site / command 命名通过 Naming Contract（见下方），先定公共接口再定 schema
        [ ] description：一句话说明该 adapter 返回什么数据、来自哪个站点/范围
-       [ ] args：用户可配的参数，命名和默认值见 references/args.md
+       [ ] args：用户可配的参数，如 [{ name: 'limit', default: 20, description: 'Maximum number of items to return.' }]
        [ ] output.fields：按用户确认的字段声明 schema
        [ ] 每个字段必须有 type 和 description，可选 format / unit / nullable / source / examples
        [ ] 命名用 camelCase，单位清晰（如 viewCount 不是 play）
        [ ] columns：如需 table 输出，按 schema 字段顺序排列
-       [ ] 通过“必要字段完整性门禁”（见下方 Required Adapter Contract）
+       [ ] examples（可选）：写 1-3 个常用调用示例，会在 tap help <site> <command> 中展示
+              格式：[{ description?: '说明', args: { limit: 5 } }, ...]
+              建议写：默认调用、指定 limit、组合 --fields 的典型用法
        ✋ 向用户汇报：展示 description / args / output.fields / columns / pipeline 草稿，等待最终确认后再写文件
 
 [ ] 6. 组装 pipeline
@@ -99,7 +127,6 @@ DONE
        [ ] 多请求场景优先只用 as / from / foreach 三个概念，避免把请求逻辑塞进 evaluate 字符串
        [ ] map 步骤映射字段，用 ${{ }} 表达式
        [ ] map 输出 key 必须覆盖 output.fields 中声明的字段
-       [ ] 不允许 map 产出未声明字段；未声明字段会被 runtime 丢弃，说明 schema 设计没对齐
        [ ] 末尾加 limit: '${{ args.limit }}'
 
 [ ] 7. 安装适配器
@@ -108,11 +135,21 @@ DONE
 
 [ ] 8. 验证
        [ ] 运行 tap <site> <command>
+       [ ] 运行 tap <site> <command> --format json
        [ ] 确认 JSON 是 { meta, schema, items } envelope
        [ ] 确认 schema.properties 与 output.fields 一致
        [ ] 确认 items 只包含 schema 声明字段
        [ ] 检查行数、字段值是否与页面一致
-       [ ] 如有 limit 参数，测试 tap <site> <command> --limit 5
+       [ ] limit 验证（三档必测）：
+           [ ] 测试 tap <site> <command> --limit 3（小值）
+           [ ] 测试 tap <site> <command> --limit 3 --format json（小值 JSON）
+           [ ] 测试 tap <site> <command>（默认 limit，确认条数符合 default 值）
+           [ ] 测试 tap <site> <command> --limit <default+10>（超出首屏/首页数量）
+           ⚠️ 依赖无限滚动或分页的 adapter，必须验证超出首屏的数据能正确拉取
+       [ ] nullable 字段抽样验证：
+           [ ] 对可能为空的字段（正文、图片等），按 item 类型抽样确认
+           [ ] 若字段为空，确认是业务上确实为空还是 selector 错误
+           [ ] nullable 字段 description 要注明何时为空
 ```
 
 ---
@@ -121,15 +158,17 @@ DONE
 
 | 卡在 | 现象 | 跳去 |
 |------|------|------|
-| Step 2 | Network 没有 XHR | 尝试 Pattern E（DOM 提取）|
-| Step 3 | curl 返回 403 | 需要 cookie → 改用 Pattern B |
-| Step 3 | 返回 HTML | API 路径不对，重新看 Network |
+| Step 2 | Network 没有 XHR/JSON | 侦察 DOM custom elements / HTML partial → 尝试 Pattern F 或 E |
+| Step 3 | curl / fetch 返回 403 | 先执行"403 判断门禁"（见 Step 3），确认浏览器登录态 + 同源接口都无效后再考虑 token |
+| Step 3 | 返回 HTML（非 JSON） | 确认是否是 HTML partial（Pattern F）；不是则 API 路径不对，重新看 Network |
 | Step 3 | 返回 `{"data":[]}` 空数组 | 参数不对，检查 Network 请求参数 |
+| Step 3 | 浏览器页面正常但 API 403 | 优先 Pattern F（同源 HTML partial）；其次 Pattern E（DOM 提取）；最后才考虑 OAuth |
 | Step 4 | 字段含义不清楚 | 对比页面排序推断（如排序后看哪列跟着变）|
 | Step 5 | schema 含义无法确认 | 停下来询问用户，不要靠模型猜最终含义 |
 | Step 6 | 嵌套结构复杂 | 先用 evaluate 在浏览器跑 JS 确认路径，再翻译成 select 步骤 |
 | Step 8 | 输出空 | 检查 select 路径是否正确，在浏览器 console 验证 |
 | Step 8 | 字段全是 undefined | map 里的 ${{ item.xxx }} 路径写错，检查实际字段名 |
+| Step 8 | 默认 limit 实际返回数量不足 | 检查分页逻辑：是否只取了首屏/首页；Pattern F 需跟随 load-after 翻页 |
 
 ---
 
@@ -138,7 +177,6 @@ DONE
 | 文件 | 什么时候翻 |
 |------|----------|
 | `references/patterns.md` | Step 2-6：判断 Pattern + 完整 pipeline 模板 |
-| `references/args.md` | Step 5：参数命名、默认值、description 写法 |
 | `references/field-mapping.md` | Step 6：${{ }} 表达式 + Pipeline Step Reference 速查 |
 | `references/adapter-template.md` | Step 6-7：完整适配器结构 |
 
@@ -148,95 +186,36 @@ DONE
 
 - 适配器只能用 pipeline 声明式步骤，不能写自定义逻辑函数
 - 顶层 `description` 必须写一句业务说明，用于 `tap schema` 全局命令发现；不能省略
+- 顶层 `examples`（可选）：写 1-3 个典型调用示例，在 `tap help` 中展示给用户和 Agent，格式为 `[{ description?, args }]`
 - `args` 中每个参数都应写 `description`，让 `tap schema <site> <command>` 能指导 Agent 正确调用
-- `args` 只暴露用户确实需要调节的选项；不要把上游 `ps`、`pn`、`rid` 这类含糊参数名直接暴露给用户
 - `output.fields` 是 JSON 输出契约，必须由用户确认后写入；不要从字段名或样例值静默猜最终 schema
 - JSON 输出只包含 `output.fields` 声明的字段；未声明字段会被 runtime 丢弃
 - `columns` 只决定表格列顺序，必须与 schema/map 输出字段对齐
-- 需要浏览器的适配器（Pattern B/D/E，以及使用 `browserFetch` 的 Pattern C）要求本地 Chrome 以 `--remote-debugging-port=9222` 启动
-- 适配器路径：`~/.tap/adapters/<site>/<command>.js`；`site` 和 `command` 是公共 CLI 接口，创建后不要随意改名
+- 需要浏览器的适配器（Pattern B/D/E/F，以及使用 `browserFetch` 的 Pattern C）要求有可用的 `tap browser start` 浏览器会话
+- 适配器路径：`~/.tap/adapters/<site>/<command>.js`（`<site>` 通常是域名主体，如 `bilibili`、`linuxdo`）
 - 调试过程中的临时 JSON 文件只落在 `/tmp/`，不要留在项目目录
 
-## Naming Contract
+**敏感参数门禁**：新增任何 token / accessToken / apiKey / cookie / secret / session 参数前，必须满足全部条件：
+- 已验证浏览器登录态页面不可用（页面本身 blocked 或未登录）
+- 已验证同源 HTML partial / GraphQL / internal endpoint 不可用（Pattern F 不可行）
+- 已验证页面 DOM 不含结构化目标数据（Pattern E 不可行）
+- 已向用户说明为什么以上路径都失败、为什么必须引入该参数
+- 参数 `description` 明确说明获取方式、有效期、敏感性；不得把 token 写入 adapter 文件或日志
 
-写入新适配器前先确定 `site` 和 `command`。它们会出现在 `tap <site> <command>`、`tap schema <site> <command>`、文档、脚本和其他 agent 调用里，所以要按稳定公共接口设计。
+**不符合此门禁不得引入敏感参数。**
 
-### site 命名
+**数据访问优先级**（从最低摩擦到最高）：
+1. 公开 JSON/API（无需认证）
+2. 浏览器登录态同源 JSON API（Pattern B）
+3. 浏览器登录态同源 HTML partial / GraphQL（Pattern F）
+4. 页面 DOM / custom element attributes（Pattern E）
+5. 用户自然拥有的登录态 cookie（浏览器已登录即可）
+6. 外部 token / API key / OAuth（最后手段）
 
-- 使用稳定的小写 slug，只包含小写字母、数字和连字符；不要使用空格、下划线或大小写混合。
-- 优先使用站点/产品/组织的品牌名，不带顶级域名：`openai`、`reddit`、`anthropic`。
-- 个人站点使用稳定 handle 或域名主体：`simonwillison`。
-- 同一实体不要混用多个名字；如果确实有边界，必须在 description 里体现：
-  - `anthropic` 表示 `anthropic.com` 公司站内容。
-  - `claude` 表示 `claude.com` 产品站内容。
-- 不要把环境、分类、页面类型放进 `site`，例如不要用 `openai-engineering`、`reddit-hot`。
-
-### command 命名
-
-- 使用小写 kebab-case，只包含小写字母、数字和连字符。
-- 命令表达“返回的数据集合或稳定入口”，不要混入临时筛选条件。
-- 列表型数据优先用复数名词：`articles`、`posts`、`videos`、`topics`。
-- 站点原生稳定入口可以用语义名：`hot`、`trending`、`recent`、`search`。
-- 分类、时间范围、关键词优先做成 args，而不是 command：
-  - 优先：`openai articles --category Engineering`
-  - 谨慎：`openai engineering`，只在该分类是长期稳定的一等入口时使用
-- 避免把来源和筛选混在 command 里，如 `recent-blog`；更推荐 `articles` 或 `recent`，具体来源写进 description。
-
-### 迁移约束
-
-- 不要为了命名洁癖迁移已有命令；已有命令可能被脚本或 skill 引用。
-- 如果必须改名，先保留旧命令作为兼容入口，或在 PR/变更说明里列出明确迁移路径。
-- 新建适配器时先搜索现有 `~/.tap/adapters/<site>/`，避免为同一站点创建重复 site。
-
-## Required Adapter Contract
-
-写文件前逐项检查。任何一项缺失，都先修 schema 或向用户确认，不要继续安装。
-
-### 顶层必填
-
-| key | required | 验收标准 |
-|-----|----------|----------|
-| `description` | yes | 一句话说明业务用途、数据来源和范围；不能只是命令名 |
-| `args` | yes | 数组；每个参数都有 `name`、`default`、`description` |
-| `output.type` | yes | 当前列表型命令使用 `list` |
-| `output.itemName` | yes | 单数业务名，如 `topic`、`video`、`article` |
-| `output.fields` | yes | 至少 1 个字段；字段集合就是 JSON 输出契约 |
-| `columns` | yes for table-friendly commands | 只包含 `output.fields` 中存在的字段，顺序适合扫描 |
-| `pipeline` | yes | 至少包含获取步骤和最终字段映射步骤 |
-
-### 字段必填
-
-每个 `output.fields.<field>` 必须满足：
-
-- `type` 必填，只用 `string` / `integer` / `number` / `boolean` / `array` / `object`
-- `description` 必填，说明业务含义，不复述字段名
-- `source` 推荐填写 raw path，便于后续维护和排错
-- `examples` 推荐填写 1-2 个真实样例，来自侦察结果
-- 时间字段必须写 `format`，如 `iso8601`、`unix-seconds`、`date`
-- URL 字段必须写 `format: 'url'`
-- ID 字段必须写 `format: 'id'`，并说明是哪类 ID
-- 有单位的数字必须写 `unit`，如 `views`、`replies`、`seconds`
-- 可能缺失的字段必须写 `nullable: true`
-
-### 对齐门禁
-
-写入适配器前，手动核对这三个集合：
-
-```
-schemaFields = Object.keys(output.fields)
-mapFields    = Object.keys(final map/mapOne output)
-columns      = columns
-```
-
-必须满足：
-
-- `mapFields` 覆盖全部 `schemaFields`
-- `mapFields` 不包含 `schemaFields` 之外的字段
-- `columns` 是 `schemaFields` 的子集
-- `columns` 不包含重复字段
-- `columns` 中优先放 title/url/time/count/status 等用户最常看的字段
-
-如果 pipeline 没有显式 `map`（例如 evaluate 已直接返回最终对象），也必须把 evaluate 返回对象当作 `mapFields` 检查。
+**infinite-scroll 分页约定**：
+- 优先寻找 next/cursor/partial endpoint（`slot="load-after"` src、`data-cursor`、`rel="next"` 等）
+- 模拟 scrollTo(document.body.scrollHeight) 只能作为最后降级方案
+- 不能只测小 limit；必须测试超出首屏数量的 limit 验证分页逻辑
 
 ## Schema 确认规则
 
