@@ -1,6 +1,6 @@
 ---
 name: web-tech-article-analyzer
-description: Analyze web technical articles, URLs, blog posts, and article lists with a 7-layer framework. Handles single articles, RSS/batch workflows, Reddit, X/Twitter, arxiv, GitHub, technical blogs, and tap-backed sources including Simon Willison, Claude, Anthropic Engineering, and Baoyu. Outputs Chinese analysis with English technical terms preserved. Use when the user provides or asks to browse/analyze technical article content, URLs, or supported blogs, even without saying "deep analysis."
+description: Analyze web technical articles, URLs, blog posts, and article lists with a 7-layer framework. Handles single articles, RSS/batch workflows, Reddit, X/Twitter, WeChat articles, arxiv, GitHub, technical blogs, and tap-backed sources including Simon Willison, Claude, Anthropic Engineering, Baoyu, and WeChat. Outputs Chinese analysis with English technical terms preserved. Use when the user provides or asks to browse/analyze technical article content, URLs, or supported blogs, even without saying "deep analysis."
 ---
 
 # Web Tech Article Analyzer
@@ -91,6 +91,7 @@ Use this skill when:
 - User wants to browse or analyze Claude blog articles (claude.com/blog)
 - User wants to browse or analyze Anthropic engineering blog articles (anthropic.com/engineering)
 - User wants to browse or analyze Baoyu blog articles (baoyu.io)
+- User wants to analyze WeChat public account articles (mp.weixin.qq.com)
 - User provides technical article content that needs summarization or analysis
 - User wants to extract key insights, metrics, or architectural details from web content
 - User needs community feedback analysis from Reddit technical discussions
@@ -146,6 +147,7 @@ Use this skill when:
    - Detect domain: `claude.com` → **Claude Blog Mode**
    - Detect domain: `anthropic.com/engineering` → **Anthropic Engineering Mode**
    - Detect domain: `baoyu.io` → **Baoyu Mode**
+   - Detect domain: `mp.weixin.qq.com` or WeChat public account article URL → **WeChat Article Mode**
    - Other domains → **Technical Article Mode**
    - Call appropriate tools:
      - X Tweet Mode: Run `tap x tweet --url {url}` via Bash — do NOT use chrome-devtools or context-mode
@@ -154,6 +156,7 @@ Use this skill when:
      - Claude Blog Mode: Run `tap claude post --url {url}` via Bash — do NOT use chrome-devtools or context-mode
      - Anthropic Engineering Mode: Run `tap anthropic article --url {url}` via Bash — do NOT use chrome-devtools or context-mode
      - Baoyu Mode: Run `tap baoyu article --url {url}` via Bash — do NOT use chrome-devtools or context-mode
+     - WeChat Article Mode: Run `tap wechat article --url {url}` via Bash — do NOT use chrome-devtools, webReader, or context-mode
      - Technical Article Mode: Use webReader first for clean extraction, but if any login/anti-scraping block appears, immediately switch to chrome-devtools
 
 2. **When input is direct content:**
@@ -162,7 +165,7 @@ Use this skill when:
 
 3. **Exception handling:**
    - 404/empty content → Return: `ERROR: Content fetch failed [URL]`
-   - Login-gated / anti-scraping blocked content (e.g., 401/403, captcha/challenge page, "sign in to continue") → immediately use chrome-devtools and do NOT try other fetch methods (does not apply to X/Twitter, Reddit, Simon Willison, Claude Blog, Anthropic Engineering, or Baoyu — use tap CLI only)
+   - Login-gated / anti-scraping blocked content (e.g., 401/403, captcha/challenge page, "sign in to continue") → immediately use chrome-devtools and do NOT try other fetch methods (does not apply to X/Twitter, Reddit, Simon Willison, Claude Blog, Anthropic Engineering, Baoyu, or WeChat — use tap CLI only)
    - Non-technical content (news/video/shopping) → Return: `ERROR: Only technical content supported [type]`
 
 ### X Tweet Mode
@@ -252,6 +255,18 @@ For `baoyu.io` URLs or when user wants to browse Baoyu's blog, use the `tap` CLI
 - Do NOT use chrome-devtools, webReader, or context-mode for Baoyu content — `tap` CLI handles everything
 - Do NOT start analysis until user confirms which articles they want to analyze
 - Output directly to console for single article; use Write tool for batch analysis (same as RSS Mode)
+
+### WeChat Article Mode
+
+For `mp.weixin.qq.com` URLs or WeChat public account article links, fetch content exclusively via the `tap` CLI:
+
+```bash
+tap wechat article --url {url}
+```
+
+- Run this as a Bash command; the output is the article content and metadata.
+- Do NOT use chrome-devtools, webReader, or context-mode to fetch WeChat article content.
+- If the user provides a direct WeChat article URL, fetch it immediately with `tap wechat article --url {url}` and then analyze the returned content with the Technical Article Mode output templates (A/B/C/D) and the same 7-layer framework.
 
 ### STEP 2: Identify Article Type
 
@@ -819,7 +834,7 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 2. **Interception handling (critical)**:
    - If you hit login-state interception or anti-scraping interception at any point, switch directly to `chrome-devtools` immediately
    - Do NOT retry `webReader`, `curl`, `fetch`, or any other non-browser fetch path after interception is detected
-   - Exception: X/Twitter, Reddit, Simon Willison, Claude Blog, Anthropic Engineering, and Baoyu always use `tap` CLI — never chrome-devtools or context-mode
+   - Exception: X/Twitter, Reddit, Simon Willison, Claude Blog, Anthropic Engineering, Baoyu, and WeChat always use `tap` CLI — never chrome-devtools or context-mode
 3. **Location marking**:
    - Sections: Use percentage ranges ([25-40%])
    - Reddit comments: Mark `[评论区: Top N]`
@@ -843,6 +858,7 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 - **tap anthropic article --url {url}** (Bash): Fetch Anthropic engineering blog article content — do NOT use chrome-devtools or context-mode
 - **tap baoyu articles** (Bash): List Baoyu blog articles — do NOT use chrome-devtools or context-mode
 - **tap baoyu article --url {url}** (Bash): Fetch Baoyu blog article content — do NOT use chrome-devtools or context-mode
+- **tap wechat article --url {url}** (Bash): Fetch WeChat public account article content — do NOT use chrome-devtools, webReader, or context-mode
 - **mcp__web_reader__webReader**: Primary tool for clean extraction on non-blocked technical articles
 - **Read**: For reading snapshot files in segments when using chrome-devtools
 - **WebSearch**: For supplementing context when needed
@@ -880,9 +896,10 @@ In RSS mode, each article file MUST reuse Single Article Mode templates exactly:
 4. **For Claude Blog URLs** (`claude.com`) or requests to browse Claude's blog: Run `tap claude articles` to list articles, wait for user selection, then run `tap claude post --url {url}` for each selected article. Never use chrome-devtools or context-mode.
 5. **For Anthropic Engineering URLs** (`anthropic.com/engineering`) or requests to browse Anthropic's engineering blog: Run `tap anthropic articles` to list articles, wait for user selection, then run `tap anthropic article --url {url}` for each selected article. Never use chrome-devtools or context-mode.
 6. **For Baoyu URLs** (`baoyu.io`) or requests to browse Baoyu's blog: Run `tap baoyu articles` to list articles, wait for user selection, then run `tap baoyu article --url {url}` for each selected article. Never use chrome-devtools or context-mode.
-7. **For technical articles**: Use `webReader` with markdown format only when no interception appears, then choose Direct vs Indexed Mode using STEP 2.5
-5. **If login-state/anti-scraping interception appears** (any domain): immediately switch to `chrome-devtools`; do NOT attempt other fetch methods first
-4. **For content already provided**: Skip fetching, then choose Direct vs Indexed Mode using STEP 2.5
+7. **For WeChat article URLs** (`mp.weixin.qq.com`): Run `tap wechat article --url {url}` via Bash. Never use chrome-devtools, webReader, or context-mode.
+8. **For technical articles**: Use `webReader` with markdown format only when no interception appears, then choose Direct vs Indexed Mode using STEP 2.5
+9. **If login-state/anti-scraping interception appears** (any domain except tap-exclusive sources): immediately switch to `chrome-devtools`; do NOT attempt other fetch methods first
+10. **For content already provided**: Skip fetching, then choose Direct vs Indexed Mode using STEP 2.5
 
 ### When using chrome-devtools in Single Article Mode
 
@@ -1068,6 +1085,7 @@ WORKFLOW FOR EACH ARTICLE:
 Step 1: Fetch and read content
 - For `anthropic.com/engineering` URLs: Run `tap anthropic article --url {url}` via Bash — do NOT use chrome-devtools or context-mode
 - For `baoyu.io` URLs: Run `tap baoyu article --url {url}` via Bash — do NOT use chrome-devtools or context-mode
+- For `mp.weixin.qq.com` URLs: Run `tap wechat article --url {url}` via Bash — do NOT use chrome-devtools, webReader, or context-mode
 - For other URLs: Use `ctx_fetch_and_index` + `ctx_search` (preferred) or `webReader` only when no interception appears
 - If login-state/anti-scraping interception appears, switch directly to `chrome-devtools` and do NOT try other fetch methods
 

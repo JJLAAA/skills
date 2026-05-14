@@ -8,6 +8,7 @@ Some websites require special handling due to authentication, anti-scraping meas
 |--------|------|--------|
 | `reddit.com` | chrome-devtools | Requires full page rendering + comment loading |
 | `linux.do` | chrome-devtools | Requires login state; curl/fetch/webReader will fail or return incomplete content |
+| `mp.weixin.qq.com` | `tap wechat article --url {url}` | WeChat article extraction should use the TAP adapter instead of browser rendering |
 
 ## Guidelines
 
