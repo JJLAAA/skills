@@ -88,6 +88,7 @@ Each item maps to one of the 14 principles in `10-principles.md`.
 - [ ] **P14** Commands that can return >2,000 tokens document this in their `--help` and Skill file
 - [ ] **P14** Skill file includes a "Typical output size" column for high-volume commands
 - [ ] **P14** NDJSON streaming is supported for commands that return large lists
+- [ ] **P14** `--jq` (or equivalent) is supported so agents can filter/reshape JSON output before it enters context — filtering happens inside the CLI process, not as a separate agent-side pipe step
 
 ---
 

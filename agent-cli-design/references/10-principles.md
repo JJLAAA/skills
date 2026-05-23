@@ -466,6 +466,25 @@ Hint: This API may not be in the curated set.
       Try raw API: my-cli api GET /open-apis/im/v1/threads
 ```
 
+**API Documentation Inheritance**
+
+When Layer 2 and Layer 3 commands map 1:1 to REST resource paths, the API documentation
+becomes the CLI documentation. Agents that already know the REST API can use the CLI without
+learning a separate DSL — the path is the command, the HTTP method maps to the verb, the
+request body maps to `--params` or `--data`.
+
+This is gh's design insight with `gh api`: the GitHub REST API docs are simultaneously the
+CLI reference. An agent reading `GET /repos/{owner}/{repo}/pulls/{pull_number}` can immediately
+translate that to `gh api repos/OWNER/REPO/pulls/123`. No CLI-specific documentation is needed
+for long-tail operations.
+
+The practical implication: when designing Layer 2 and Layer 3 commands, preserve the API's
+resource path structure rather than inventing a custom command hierarchy. Your CLI inherits
+the quality and completeness of your API's documentation for free — and agents that have
+already learned the REST API can use the CLI immediately without a separate learning step.
+This is the "documentation multiplication effect": one well-documented REST API produces
+both API and CLI reference in one shot.
+
 ---
 
 ## Principle 13: Agent-Specific Auth Patterns
@@ -555,6 +574,22 @@ warns agents to always specify `--fields`.
    | `messages list` | ~200 tokens/message — always use --fields |
    | `drive files list` | unbounded — always use --limit and --fields |
    ```
+
+4. **Built-in output filter (`--jq`)** — apply a jq expression to transform output before
+   it leaves the CLI process:
+   ```bash
+   gh pr list --json number,title,state --jq '.[].title'
+   # Returns: one title per line, nothing else
+
+   mytool user list --json --jq '.[] | select(.role=="admin") | .email'
+   # Returns: admin emails only
+   ```
+   Unlike `--fields` which selects top-level keys, `--jq` applies arbitrary transformation.
+   The key architectural point: filtering happens inside the CLI process, before data enters
+   the agent's context window — not as a separate pipe step the agent runs after the fact.
+   This means the agent stores only the trimmed output in context, not the full JSON blob.
+   `--fields` and `--jq` are complementary: `--fields` is for structured field selection,
+   `--jq` is for agents that need to reshape, filter, or aggregate before further processing.
 
 **gws's approach**: Field masks are enforced at the API layer via `--field-mask` flag.
 The Skills file for each service lists the recommended fields for common use cases, so

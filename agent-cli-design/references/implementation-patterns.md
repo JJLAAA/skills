@@ -247,3 +247,55 @@ file example:  mytool config import --file config.json
 ```
 
 **Key rule**: Auto-detect pipes so agents don't need to add `--stdin` explicitly.
+
+---
+
+## 11. Built-in Output Filtering (`--jq`)
+
+**Problem**: Agents receiving large JSON blobs must store them in context before filtering.
+Even with `--fields`, agents sometimes need to reshape, aggregate, or conditionally select
+data. If that transformation happens as a separate pipe step, the full output still enters
+the context window first.
+
+**Pattern**:
+```
+command list [--json] [--jq EXPR]
+
+if --json and --jq:
+    result = execute command, collect full JSON output
+    filtered = apply jq expression to result (in-process or via jq subprocess)
+    write filtered output to stdout
+    exit 0
+
+if --json only:
+    write full JSON to stdout
+
+# The key: --jq runs inside the CLI process before stdout is flushed,
+# so only the filtered result reaches the agent's context window
+```
+
+**Example usage**:
+```bash
+# Get only PR titles
+gh pr list --json number,title,state --jq '.[].title'
+
+# Get admin email addresses only
+mytool user list --json --jq '.[] | select(.role=="admin") | .email'
+
+# Count open issues by label
+mytool issue list --json --jq '[.[] | select(.state=="open")] | length'
+```
+
+**Implementation note**: You can shell out to the system `jq` binary if available, or embed
+a jq library. Either way, apply the filter before writing to stdout. Emit a clear error if
+the expression is invalid: `"Invalid --jq expression: <error from jq>"`.
+
+**Key distinction from `--fields`**:
+- `--fields id,name,status` — selects named top-level keys, always returns an array of objects
+- `--jq '.[] | .name'` — arbitrary transformation: can extract nested fields, filter rows,
+  aggregate, or return a scalar. Use `--fields` for structured selection, `--jq` for anything
+  that needs to reshape the output.
+
+**Key rule**: The value of `--jq` is architectural — filtering happens inside the CLI process,
+so the agent's context window receives only the final trimmed result, not the intermediate
+full payload.
