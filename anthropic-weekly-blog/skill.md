@@ -1,35 +1,43 @@
-# Anthropic Weekly Blog Analyzer
+---
+name: anthropic-weekly-blog
+description: Analyze Anthropic engineering blog posts from the current week and generate a Chinese weekly technical report. Use when the user asks about "Anthropic weekly blog", "latest Anthropic engineering posts", "分析本周 Anthropic 博客", "本周 Anthropic 工程博客", "Anthropic 本周博客", or wants this week's Anthropic technical articles summarized or analyzed.
+---
 
-Analyzes Anthropic engineering blog posts from the current week and generates detailed technical analysis reports.
+# Anthropic Weekly Blog
+
+Analyze Anthropic engineering blog posts published during the current week and compile complete per-article analyses into one markdown report.
 
 ## Workflow
 
-1. **Fetch article list** via `tap anthropic articles` (returns structured JSON with title, summary, date, url)
-2. **Filter this week's posts** by date field (Sunday to today)
-3. **Exit early** if no posts found
-4. **Create parallel tasks** using TaskCreate for each article
-5. **Analyze each article** using web-tech-article-analyzer skill
-6. **Compile results** into a single markdown file with independent analyses
+1. Fetch Anthropic article metadata with `tap anthropic articles`.
+2. Calculate the current week range as Sunday 00:00 through today 23:59 in the user's active timezone.
+3. Parse each article `date` field in `Mon DD, YYYY` format, such as `Apr 23, 2026`.
+4. Filter strictly to articles with dates inside the current week range.
+5. If no matching articles exist, output `本周暂无新文章发布` and stop.
+6. Analyze each filtered article independently with the `web-tech-article-analyzer` skill, passing the article URL.
+7. Create `anthropic-weekly-YYYY-MM-DD.md` in the current working directory.
 
-## Output
+## Report Format
 
-Single markdown file: `anthropic-weekly-YYYY-MM-DD.md` containing all article analyses.
+Use this structure:
 
-## Trigger Phrases
+```markdown
+# Anthropic 工程博客周报 (YYYY-MM-DD)
 
-- "分析本周 Anthropic 博客"
-- "Anthropic weekly blog"
-- "本周 Anthropic 工程博客"
+本周共发布 X 篇文章
 
-## Gotchas
+---
 
-⚠️ **必须严格筛选发布时间为本周的文章**
+## Article Title
 
-1. **Featured ≠ 本周发布**: `tap` 返回的文章按页面顺序排列，Featured 文章可能发布于几周前。必须检查每篇文章的 `date` 字段，而不是依据排列顺序判断。
+[Full independent analysis from web-tech-article-analyzer]
 
-2. **没有就是没有**: 如果本周（周日至今天）没有新文章，直接输出"本周无新文章"，**不要分析过期文章**。
+---
+```
 
-3. **日期判断标准**:
-   - 本周 = 周日 00:00 至今天 23:59
-   - `date` 字段格式为 "Mon DD, YYYY"（如 "Apr 23, 2026"）
-   - 只统计明确在日期范围内的文章
+## Requirements
+
+- Treat `date` as the source of truth. Do not infer freshness from page order or featured placement.
+- Do not analyze older featured articles when no current-week articles exist.
+- Keep each article analysis independent and complete; do not merge separate article analyses into a cross-article summary unless the user explicitly asks for synthesis.
+- Save the report in the current working directory unless the user specifies another location.

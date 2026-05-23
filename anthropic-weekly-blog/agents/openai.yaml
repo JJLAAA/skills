@@ -1,0 +1,7 @@
+interface:
+  display_name: "Anthropic Weekly Blog"
+  short_description: "Analyze this week's Anthropic posts"
+  default_prompt: "Use $anthropic-weekly-blog to analyze this week's Anthropic engineering blog posts."
+
+policy:
+  allow_implicit_invocation: true
