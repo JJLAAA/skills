@@ -34,7 +34,22 @@ Generate filename: `./{YYMMDD}-handoff.md` (e.g., `./260314-handoff.md`)
 
 Use current directory unless user specifies otherwise.
 
-### Step 2: Gather Executable Context
+### Step 2: Clarify Handoff Target
+
+Before writing the handoff, determine these two fields:
+
+- **Target reader:** Which agent or system will consume this handoff? Examples: `Codex`, `Claude Code`, `next AI agent`.
+- **Execution type:** What should the target reader do? Examples: `implementation continuation`, `code review`, `debugging`, `architecture review`, `test coverage review`.
+
+If either field is not explicit and cannot be confidently inferred from the user's request or current context, ask one concise clarification question covering both fields before creating the file.
+
+Do not ask when the answer is already clear. Examples:
+
+- User says "交给 Codex review" → target reader: `Codex`; execution type: `code review`
+- User says "让 Claude Code 继续做" → target reader: `Claude Code`; execution type: `implementation continuation`
+- User says "保存进度，下一轮继续" → target reader: `next AI agent`; execution type: `implementation continuation`
+
+### Step 3: Gather Executable Context
 
 Collect SPECIFIC, ACTIONABLE information:
 
@@ -44,11 +59,11 @@ Collect SPECIFIC, ACTIONABLE information:
 - **Assumptions made**: What was assumed to be true
 - **Verification status**: What has been tested/confirmed
 
-### Step 3: Write Handoff Document
+### Step 4: Write Handoff Document
 
 Write to `./{YYMMDD}-handoff.md` using the structure below.
 
-### Step 4: Confirm
+### Step 5: Confirm
 
 Tell user: "Handoff saved to `{filename}` - next agent can continue from here."
 
@@ -59,10 +74,30 @@ Tell user: "Handoff saved to `{filename}` - next agent can continue from here."
 ```markdown
 # AI Agent Handoff - {YYMMDD}
 
-> **Target Audience:** Next AI Agent (cannot access current context)
 > **Goal:** Enable immediate continuation without repeating analysis or mistakes
 
 ---
+
+## 0. Handoff Routing
+
+**Target reader:** [Codex / Claude Code / next AI agent / other agent or system]
+
+**Execution type:** [implementation continuation / code review / debugging / architecture review / test coverage review / other]
+
+**How to read this handoff:**
+1. Treat this file as the task entrypoint.
+2. Start with `## 0. Handoff Routing` to understand your role and execution type.
+3. Execute the "Next Agent's First Action" section before broad exploration.
+4. Use `## 3. Critical Context`, `## 4. Key Findings`, and `## 8. Risks & Pitfalls` as supporting context.
+5. Do not broaden the task beyond the routing and objective sections.
+
+**Expected behavior from target reader:**
+- [Specific instruction 1, e.g. "Review only the current diff and report bugs by severity"]
+- [Specific instruction 2, e.g. "Do not rewrite unrelated files"]
+
+**Out of scope for target reader:**
+- [Boundary 1]
+- [Boundary 2]
 
 ## 1. Current Task Objective
 
@@ -312,6 +347,7 @@ When starting a new session:
 Found handoff from {date}:
 
 Task: {brief objective}
+Execution type: {execution_type}
 Progress: {completion percentage}
 Next step: {priority 1 task}
 
@@ -366,4 +402,3 @@ Next step:
 Why start here: Token rotation is blocking login flow (Priority 1).
 Database approach confirmed working in staging environment.
 ```
-
