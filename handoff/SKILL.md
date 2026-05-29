@@ -63,7 +63,17 @@ Collect SPECIFIC, ACTIONABLE information:
 
 Write to `./{YYMMDD}-handoff.md` using the structure below.
 
-### Step 5: Confirm
+### Step 5: Update Existing Handoff When Continuing a Relay
+
+When updating an existing handoff after completing routed work:
+
+- Preserve durable facts, decisions, review findings, failed approaches, verification results, file inventory, and git status.
+- Update routing, current progress, pending tasks, recommended first steps, and next agent actions as needed.
+- Do not overwrite the handoff as a fresh summary unless the user explicitly asks to start over.
+- If changing `Target reader` or `Execution type`, explicitly record why the handoff is being rerouted.
+- Treat the handoff as shared working memory plus the next execution protocol.
+
+### Step 6: Confirm
 
 Tell user: "Handoff saved to `{filename}` - next agent can continue from here."
 
@@ -98,6 +108,8 @@ Tell user: "Handoff saved to `{filename}` - next agent can continue from here."
 **Out of scope for target reader:**
 - [Boundary 1]
 - [Boundary 2]
+
+**Reroute reason:** [If this handoff was updated from a previous target reader or execution type, explain why the next target/execution changed; otherwise "initial handoff"]
 
 ## 1. Current Task Objective
 
@@ -139,6 +151,10 @@ Tell user: "Handoff saved to `{filename}` - next agent can continue from here."
   - **Rationale:** [Why this approach]
   - **Alternatives considered:** [What else was evaluated]
   - **Trade-offs:** [What we're giving up]
+
+**Relay history:**
+- [Timestamp/agent] [Execution type] → [Result or conclusion]
+- [Timestamp/agent] Rerouted to [target reader] for [execution type] because [reason]
 
 **Assumptions:**
 - [Assumption 1] - needs verification: [yes/no]
