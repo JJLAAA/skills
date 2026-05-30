@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Handoff Agent Relay Infographic</title>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #cbd5e1;
+      --paper: #f8fafc;
+      --blue: #2563eb;
+      --green: #16a34a;
+      --amber: #d97706;
+      --indigo: #4338ca;
+      --violet: #7c3aed;
+      --red: #dc2626;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #eef2f7;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .diagram-wrapper {
+      width: 1420px;
+      max-width: calc(100vw - 32px);
+      margin: 0 auto;
+      padding: 30px 0 38px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 26px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+      max-width: 760px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      min-width: 360px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: #334155;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(220px, 1fr));
+      gap: 14px;
+      align-items: stretch;
+      overflow-x: auto;
+      padding: 14px 2px 4px;
+    }
+
+    .phase-wrap {
+      position: relative;
+      min-width: 220px;
+      margin-top: 16px;
+    }
+
+    .phase {
+      position: relative;
+      min-height: 430px;
+      padding: 20px 14px 14px;
+      border-radius: 8px;
+      border: 1.5px solid;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .phase.blue {
+      background: linear-gradient(180deg, #eff6ff, #dbeafe);
+      border-color: #93c5fd;
+    }
+
+    .phase.green {
+      background: linear-gradient(180deg, #f0fdf4, #dcfce7);
+      border-color: #86efac;
+    }
+
+    .phase.amber {
+      background: linear-gradient(180deg, #fffbeb, #fef3c7);
+      border-color: #fcd34d;
+    }
+
+    .phase.indigo {
+      background: linear-gradient(180deg, #eef2ff, #e0e7ff);
+      border-color: #a5b4fc;
+    }
+
+    .phase.violet {
+      background: linear-gradient(180deg, #f5f3ff, #ede9fe);
+      border-color: #c4b5fd;
+    }
+
+    .badge {
+      position: absolute;
+      top: -13px;
+      left: 18px;
+      z-index: 2;
+      border-radius: 20px;
+      padding: 3px 13px;
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.4;
+      font-weight: 800;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
+    }
+
+    .badge.blue { background: var(--blue); }
+    .badge.green { background: var(--green); }
+    .badge.amber { background: var(--amber); }
+    .badge.indigo { background: var(--indigo); }
+    .badge.violet { background: var(--violet); }
+
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 13px 14px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .icon.blue { background: var(--blue); }
+    .icon.green { background: var(--green); }
+    .icon.amber { background: var(--amber); }
+    .icon.indigo { background: var(--indigo); }
+    .icon.violet { background: var(--violet); }
+
+    .item {
+      background: var(--paper);
+      border-radius: 5px;
+      padding: 7px 9px;
+      margin-bottom: 6px;
+      border-left: 3px solid #3b82f6;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #1e293b;
+    }
+
+    .item:last-child {
+      margin-bottom: 0;
+    }
+
+    .item.ok { border-left-color: #10b981; }
+    .item.warn { border-left-color: #f59e0b; }
+    .item.danger { border-left-color: #ef4444; }
+    .item.info { border-left-color: #3b82f6; }
+    .item.event { border-left-color: #f97316; }
+
+    .connector {
+      position: absolute;
+      top: 190px;
+      right: -26px;
+      z-index: 5;
+      width: 38px;
+      height: 56px;
+      pointer-events: none;
+    }
+
+    .connector text {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .panel {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .note {
+      background: #fff;
+      border-radius: 8px;
+      padding: 14px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+      min-height: 150px;
+    }
+
+    .note h2 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 10px;
+      font-size: 15px;
+      line-height: 1.3;
+    }
+
+    .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      flex: 0 0 auto;
+    }
+
+    .num.blue { background: var(--blue); }
+    .num.green { background: var(--green); }
+    .num.amber { background: var(--amber); }
+
+    .note p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    code {
+      font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+      font-size: 11px;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+    .rule {
+      margin-top: 10px;
+      padding: 9px 10px;
+      border-radius: 6px;
+      background: #f8fafc;
+      border: 1px dashed #94a3b8;
+      font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #334155;
+      white-space: normal;
+    }
+
+    @media (max-width: 980px) {
+      .diagram-wrapper {
+        padding: 22px 0 30px;
+      }
+
+      header {
+        display: block;
+      }
+
+      .legend {
+        justify-content: flex-start;
+        min-width: 0;
+        margin-top: 14px;
+      }
+
+      .flow {
+        grid-template-columns: repeat(5, 250px);
+      }
+
+      .panel {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="diagram-wrapper">
+    <header>
+      <div>
+        <h1>Handoff 驱动的 Agent 接力流程</h1>
+        <p class="subtitle">handoff 文件不是人类摘要，而是 target agent 的任务入口：保留事实和关键决策，更新路由与下一步动作，让 source agent 与 target agent 通过共享工作记忆持续协作。</p>
+      </div>
+      <div class="legend" aria-label="legend">
+        <span class="tag" style="color:var(--blue)"><span class="dot"></span>启动</span>
+        <span class="tag" style="color:var(--green)"><span class="dot"></span>写入</span>
+        <span class="tag" style="color:var(--amber)"><span class="dot"></span>执行</span>
+        <span class="tag" style="color:var(--indigo)"><span class="dot"></span>接力</span>
+        <span class="tag" style="color:var(--violet)"><span class="dot"></span>恢复</span>
+      </div>
+    </header>
+
+    <section class="flow" aria-label="handoff flow">
+      <div class="phase-wrap">
+        <div class="badge blue">1 触发与澄清</div>
+        <section class="phase blue">
+          <div class="card">
+            <div class="card-title"><span class="icon blue">A</span>Source Agent 启动 handoff</div>
+            <div class="item event">用户说 handoff / 保存进度 / 交接，或上下文接近限制。</div>
+            <div class="item info">默认文件名：<code>YYMMDD-handoff.md</code>，除非用户指定路径。</div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="icon blue">?</span>先确定路由</div>
+            <div class="item ok">明确 <code>Target reader</code>：Codex / Claude Code / next AI agent。</div>
+            <div class="item ok">明确 <code>Execution type</code>：继续实现 / review / debug / 架构判断。</div>
+            <div class="item warn">任一字段不能推断时，只问一个覆盖两者的澄清问题。</div>
+          </div>
+        </section>
+        <svg class="connector" viewBox="0 0 38 56">
+          <defs><marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/></marker></defs>
+          <path d="M2,28 C13,28 22,28 36,28" stroke="#2563eb" stroke-width="2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-blue)"/>
+          <text x="5" y="20" fill="#2563eb">route</text>
+        </svg>
+      </div>
+
+      <div class="phase-wrap">
+        <div class="badge green">2 生成自举任务包</div>
+        <section class="phase green">
+          <div class="card">
+            <div class="card-title"><span class="icon green">0</span>Handoff Routing</div>
+            <div class="item ok">写清 target agent 的身份、执行类型、期望行为和边界。</div>
+            <div class="item ok">加入 <code>How to read this handoff</code>：先读 routing，再执行 first action。</div>
+            <div class="item warn">若从上一棒改派，必须写 <code>Reroute reason</code>。</div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="icon green">M</span>共享工作记忆</div>
+            <div class="item info">保留目标、进度、关键上下文、重要决策。</div>
+            <div class="item info">记录 findings、失败方案、风险、文件清单、git 状态。</div>
+            <div class="item ok">写入精确路径、函数、命令和验证结果。</div>
+          </div>
+        </section>
+        <svg class="connector" viewBox="0 0 38 56">
+          <defs><marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#16a34a"/></marker></defs>
+          <path d="M2,28 C13,28 22,28 36,28" stroke="#16a34a" stroke-width="2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-green)"/>
+          <text x="3" y="20" fill="#16a34a">read</text>
+        </svg>
+      </div>
+
+      <div class="phase-wrap">
+        <div class="badge amber">3 Target Agent 执行</div>
+        <section class="phase amber">
+          <div class="card">
+            <div class="card-title"><span class="icon amber">B</span>只按文件启动</div>
+            <div class="item ok">把 handoff 当任务入口，不依赖聊天上下文。</div>
+            <div class="item ok">先执行 <code>Next Agent's First Action</code>，再扩展探索。</div>
+            <div class="item danger">不要把 review 任务扩大成重构，或把 debug 任务扩大成架构设计。</div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="icon amber">✓</span>产出结论</div>
+            <div class="item info">按 execution type 产出：findings / 修复 / debug 结论 / 架构判断。</div>
+            <div class="item ok">验证命令和证据写回状态，而不是只写结论。</div>
+            <div class="item warn">如果需要下一棒，准备接力更新。</div>
+          </div>
+        </section>
+        <svg class="connector" viewBox="0 0 38 56">
+          <defs><marker id="arrow-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#d97706"/></marker></defs>
+          <path d="M2,28 C13,28 22,28 36,28" stroke="#d97706" stroke-width="2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-amber)"/>
+          <text x="3" y="20" fill="#d97706">relay</text>
+        </svg>
+      </div>
+
+      <div class="phase-wrap">
+        <div class="badge indigo">4 接力更新</div>
+        <section class="phase indigo">
+          <div class="card">
+            <div class="card-title"><span class="icon indigo">K</span>保留稳定内容</div>
+            <div class="item ok">保留事实、决策、review findings、失败尝试、验证结果。</div>
+            <div class="item ok">保留文件清单和 git 状态，作为下一棒的可执行证据。</div>
+            <div class="item danger">不要默认把 handoff 覆盖成全新总结。</div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="icon indigo">N</span>只更新下一步协议</div>
+            <div class="item info">更新 target reader、execution type、expected behavior、out of scope。</div>
+            <div class="item info">更新 current progress、pending tasks、recommended first steps。</div>
+            <div class="item warn">切换 target 或执行类型时，写明 reroute reason。</div>
+          </div>
+        </section>
+        <svg class="connector" viewBox="0 0 38 56">
+          <defs><marker id="arrow-indigo" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#4338ca"/></marker></defs>
+          <path d="M2,28 C13,28 22,28 36,28" stroke="#4338ca" stroke-width="2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-indigo)"/>
+          <text x="2" y="20" fill="#4338ca">next</text>
+        </svg>
+      </div>
+
+      <div class="phase-wrap">
+        <div class="badge violet">5 下一棒恢复</div>
+        <section class="phase violet">
+          <div class="card">
+            <div class="card-title"><span class="icon violet">R</span>读取最近 handoff</div>
+            <div class="item ok">新 session 检查 <code>*-handoff.md</code>，读取最新文件。</div>
+            <div class="item info">展示摘要：任务、execution type、进度、下一步。</div>
+            <div class="item warn">用户确认后，按 Recommended First Steps 恢复上下文。</div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="icon violet">∞</span>持续异步协作</div>
+            <div class="item ok">source agent 与 target agent 通过文件交换状态。</div>
+            <div class="item info">人类只负责投递文件、决定下一棒和验收。</div>
+            <div class="item ok">完成后可删除 handoff，未完成则继续接力。</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="summary rules">
+      <article class="note">
+        <h2><span class="num blue">1</span>核心不变量</h2>
+        <p>handoff 是给下一位 AI agent 的技术交接，不是给用户看的摘要。它必须包含可执行上下文：路径、函数、命令、验证状态、失败尝试和决策理由。</p>
+        <div class="rule">stable memory = facts + decisions + evidence + failed attempts</div>
+      </article>
+      <article class="note">
+        <h2><span class="num green">2</span>接力更新原则</h2>
+        <p>同一任务继续推进时，保留工作日志和关键结论；只更新路由、当前进度、待办和 next action。换目标或换执行类型时，必须写明改派原因。</p>
+        <div class="rule">update = routing + progress + pending tasks + first action</div>
+      </article>
+      <article class="note">
+        <h2><span class="num amber">3</span>边界控制</h2>
+        <p>Target agent 先确认自己的角色，再执行指定动作；不要扩大任务范围。review 就输出 findings，debug 就定位根因，implementation 就做最小修复和验证。</p>
+        <div class="rule">agent behavior follows Target reader + Execution type</div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
