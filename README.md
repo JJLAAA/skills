@@ -8,14 +8,6 @@
 - 仓库级图片和示意图统一放在 `assets/`。
 - `SKILL.md` 保持机器可执行、约束明确；README 只做导航和解释。
 
-## Agent Handoff Relay
-
-`handoff` skill 用于让 source agent 和 target agent 通过文件持续接力，而不是让用户做人肉中间层。
-
-![Handoff Agent Relay](assets/handoff-agent-relay-infographic.png)
-
-HTML 源文件：`assets/handoff-agent-relay-infographic.html`
-
 ## Skill Index
 
 | Skill | 目录 | 主要用途 | 常见触发 |
@@ -160,6 +152,12 @@ latest Claude posts
 ### handoff
 
 **用途：** 生成给下一个 AI agent 的技术交接文件，让 agent 之间通过文件接力。
+
+`handoff` skill 用于让 source agent 和 target agent 通过文件持续接力，而不是让用户做人肉中间层。
+
+![Handoff Agent Relay](assets/handoff-agent-relay-infographic.png)
+
+HTML 源文件：`assets/handoff-agent-relay-infographic.html`
 
 **适合场景：**
 
@@ -334,18 +332,6 @@ OpenAI weekly articles 20260314
 分析这篇技术文章：https://example.com/article
 用 7 层框架拆解这组文章。
 ```
-
-## System Skills
-
-`.system/` 下是系统级 skills，通常不作为日常自定义 skill 修改对象，但这里也列出用途，方便理解。
-
-| Skill | 目录 | 用途 |
-|---|---|---|
-| `imagegen` | `.system/imagegen/` | 生成或编辑位图资产，如照片、插画、纹理、sprite、mockup |
-| `openai-docs` | `.system/openai-docs/` | 查询 OpenAI 官方文档，做模型选择、API 迁移和 prompt 升级 |
-| `plugin-creator` | `.system/plugin-creator/` | 创建 Codex plugin 目录、manifest 和 marketplace 条目 |
-| `skill-creator` | `.system/skill-creator/` | 创建或更新 Codex skills 的系统指导 |
-| `skill-installer` | `.system/skill-installer/` | 从 curated list 或 GitHub repo 安装 skills |
 
 ## Repository Layout
 
