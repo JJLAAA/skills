@@ -34,20 +34,23 @@ Generate filename: `./{YYMMDD}-handoff.md` (e.g., `./260314-handoff.md`)
 
 Use current directory unless user specifies otherwise.
 
-### Step 2: Clarify Handoff Target
+### Step 2: Clarify Handoff Routing
 
-Before writing the handoff, determine these two fields:
+Before writing the handoff, determine these three fields:
 
+- **Source agent:** Which agent or system is creating or updating this handoff? Examples: `Codex`, `Claude Code`, `ChatGPT`, `current AI agent`.
 - **Target reader:** Which agent or system will consume this handoff? Examples: `Codex`, `Claude Code`, `next AI agent`.
 - **Execution type:** What should the target reader do? Examples: `implementation continuation`, `code review`, `debugging`, `architecture review`, `test coverage review`.
 
-If either field is not explicit and cannot be confidently inferred from the user's request or current context, ask one concise clarification question covering both fields before creating the file.
+If `Target reader` or `Execution type` is not explicit and cannot be confidently inferred from the user's request or current context, ask one concise clarification question covering both fields before creating the file.
+
+Do not ask for `Source agent`; infer it from the current runtime identity when possible, otherwise use `current AI agent`.
 
 Do not ask when the answer is already clear. Examples:
 
-- User says "交给 Codex review" → target reader: `Codex`; execution type: `code review`
-- User says "让 Claude Code 继续做" → target reader: `Claude Code`; execution type: `implementation continuation`
-- User says "保存进度，下一轮继续" → target reader: `next AI agent`; execution type: `implementation continuation`
+- User says "交给 Codex review" → source agent: current agent; target reader: `Codex`; execution type: `code review`
+- User says "让 Claude Code 继续做" → source agent: current agent; target reader: `Claude Code`; execution type: `implementation continuation`
+- User says "保存进度，下一轮继续" → source agent: current agent; target reader: `next AI agent`; execution type: `implementation continuation`
 
 ### Step 3: Gather Executable Context
 
@@ -68,9 +71,9 @@ Write to `./{YYMMDD}-handoff.md` using the structure below.
 When updating an existing handoff after completing routed work:
 
 - Preserve durable facts, decisions, review findings, failed approaches, verification results, file inventory, and git status.
-- Update routing, current progress, pending tasks, recommended first steps, and next agent actions as needed.
+- Update source agent, routing, current progress, pending tasks, recommended first steps, and next agent actions as needed.
 - Do not overwrite the handoff as a fresh summary unless the user explicitly asks to start over.
-- If changing `Target reader` or `Execution type`, explicitly record why the handoff is being rerouted.
+- If changing `Source agent`, `Target reader`, or `Execution type`, explicitly record why the handoff is being rerouted or updated.
 - Treat the handoff as shared working memory plus the next execution protocol.
 
 ### Step 6: Confirm
@@ -89,6 +92,8 @@ Tell user: "Handoff saved to `{filename}` - next agent can continue from here."
 ---
 
 ## 0. Handoff Routing
+
+**Source agent:** [Codex / Claude Code / ChatGPT / current AI agent / other agent or system]
 
 **Target reader:** [Codex / Claude Code / next AI agent / other agent or system]
 
@@ -109,7 +114,7 @@ Tell user: "Handoff saved to `{filename}` - next agent can continue from here."
 - [Boundary 1]
 - [Boundary 2]
 
-**Reroute reason:** [If this handoff was updated from a previous target reader or execution type, explain why the next target/execution changed; otherwise "initial handoff"]
+**Reroute reason:** [If this handoff was updated from a previous source agent, target reader, or execution type, explain why the route changed; otherwise "initial handoff"]
 
 ## 1. Current Task Objective
 
@@ -153,8 +158,8 @@ Tell user: "Handoff saved to `{filename}` - next agent can continue from here."
   - **Trade-offs:** [What we're giving up]
 
 **Relay history:**
-- [Timestamp/agent] [Execution type] → [Result or conclusion]
-- [Timestamp/agent] Rerouted to [target reader] for [execution type] because [reason]
+- [Timestamp/source agent] [Execution type] → [Result or conclusion]
+- [Timestamp/source agent] Rerouted to [target reader] for [execution type] because [reason]
 
 **Assumptions:**
 - [Assumption 1] - needs verification: [yes/no]
@@ -310,6 +315,7 @@ npm test path/to/test.spec.ts
 ## Session Metadata
 
 - **Created:** {YYYY-MM-DD HH:MM}
+- **Source agent:** [agent or system creating this handoff]
 - **Context tokens used:** [approximate]
 - **Session duration:** [time spent]
 - **Handoff reason:** [why session ended]
@@ -363,6 +369,8 @@ When starting a new session:
 Found handoff from {date}:
 
 Task: {brief objective}
+Source agent: {source_agent}
+Target reader: {target_reader}
 Execution type: {execution_type}
 Progress: {completion percentage}
 Next step: {priority 1 task}
