@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: This skill should be used when the user requests to save progress, pause work, create a handoff document, or says "保存进度", "handoff", "暂停", "checkpoint", "交接". It enables zero-loss context transfer across AI agent sessions by creating a structured handoff document written FOR THE NEXT AI AGENT (not for humans). Use this at session end, when approaching context limits, or before switching tasks. The handoff preserves executable context - specific file paths, function names, decision rationale, failed approaches, and priority-ordered next steps.
+description: This skill should be used when the user requests to save progress, load prior progress, pause work, create/read a handoff document, continue from a handoff, or says "保存进度", "读取 handoff", "恢复进度", "继续上次", "load handoff", "handoff", "暂停", "checkpoint", "交接". It enables zero-loss context transfer across AI agent sessions by creating or loading a structured handoff document written FOR THE NEXT AI AGENT (not for humans). Use this at session end, when approaching context limits, before task switching, or when resuming from a prior handoff. The handoff preserves executable context - specific file paths, function names, decision rationale, failed approaches, and priority-ordered next steps.
 ---
 
 # Handoff - AI Agent Context Transfer
@@ -16,17 +16,46 @@ The next agent cannot access this conversation. It only sees your handoff docume
 ## When to Trigger
 
 **User keywords:**
-- "保存进度" / "save progress" / "handoff" / "暂停" / "checkpoint" / "交接"
+- Save mode: "保存进度" / "save progress" / "create handoff" / "暂停" / "checkpoint" / "交接给..."
+- Load mode: "读取 handoff" / "load handoff" / "恢复进度" / "继续上次" / "从 handoff 继续" / "resume from handoff"
+- Ambiguous: "handoff" / "交接" / "处理 handoff"
 
 **Proactive triggers:**
 - Context approaching limit
 - Session ending
 - Complex multi-session task
 - Before task switching
+- User asks to resume previous work and a handoff file is present
 
 ---
 
 ## Workflow
+
+### Step 0: Determine Mode
+
+Before doing anything, determine whether the request is:
+
+- **Save mode:** Create or update a handoff from the current conversation/work state.
+- **Load mode:** Read an existing handoff and continue from it.
+
+Infer the mode when wording is clear.
+
+Ask one concise clarification question only when mode is ambiguous:
+
+> Do you want me to save current progress to a handoff, or load an existing handoff to continue?
+
+Do not ask when the answer is already clear. Examples:
+
+- User says "保存进度" → save mode
+- User says "继续上次 handoff" → load mode
+- User says "从 260531-handoff.md 继续" → load mode
+- User says only "handoff" → ask whether to save or load
+
+If save mode, follow the Save Mode workflow below. If load mode, follow the Load Mode workflow.
+
+---
+
+## Save Mode Workflow
 
 ### Step 1: Determine File Location
 
@@ -79,6 +108,84 @@ When updating an existing handoff after completing routed work:
 ### Step 6: Confirm
 
 Tell user: "Handoff saved to `{filename}` - next agent can continue from here."
+
+---
+
+## Load Mode Workflow
+
+### Step 1: Locate Handoff File
+
+Determine the handoff file location before reading.
+
+Do not ask when:
+
+- The user provided a specific file path and it exists.
+- Exactly one `*-handoff.md` exists in the current directory.
+- Multiple handoff files exist but the most recently modified one clearly matches the user's request.
+
+Ask one concise clarification question when:
+
+- No handoff file is found in the current directory and the user did not provide a path.
+- Multiple plausible handoff files exist and recency alone is not enough to choose safely.
+- The user provided a path but it does not exist.
+
+Default selection logic:
+
+1. Use the handoff file specified by the user when present and valid.
+2. Otherwise, check for `*-handoff.md` files in the current directory.
+3. If exactly one exists, use it.
+4. If multiple exist, select the most recently modified file only when it clearly matches the user's request or there is no conflicting task/date context.
+5. If no safe selection can be made, ask for the handoff file path.
+
+### Step 2: Read Routing First
+
+Read `## 0. Handoff Routing` before summarizing or acting.
+
+Extract:
+
+- **Source agent**
+- **Target reader**
+- **Execution type**
+- **Reroute reason**
+
+If the current agent clearly does not match `Target reader`, tell the user before continuing and ask whether to proceed anyway. If the target is `next AI agent`, `current AI agent`, or otherwise compatible, continue.
+
+### Step 3: Restore Executable Context
+
+Read and internalize these sections before taking action:
+
+- `## 1. Current Task Objective`
+- `## 2. Current Progress`
+- `## 3. Critical Context`
+- `## 5. Failed Approaches (DO NOT RETRY)`
+- `## 6. Pending Tasks (Priority Order)`
+- `## 7. Recommended First Steps`
+- `## 8. Risks & Pitfalls`
+- `## 12. Next Agent's First Action`
+
+Treat the handoff as the task entrypoint. Do not broaden the task beyond the objective, routing, and pending tasks unless the user explicitly redirects.
+
+### Step 4: Briefly Confirm Loaded State
+
+Tell the user only the minimum useful context:
+
+```text
+Loaded handoff: {brief objective}
+Source: {source_agent}
+Target: {target_reader}
+Execution: {execution_type}
+Starting from: {next_agent_first_action}
+```
+
+### Step 5: Continue Work
+
+Start with `## 12. Next Agent's First Action` unless it is stale or unsafe.
+
+If it is stale or unsafe:
+
+- Explain the mismatch briefly.
+- Re-verify current state using `## 7. Recommended First Steps`.
+- Continue with the highest-priority pending task that still applies.
 
 ---
 
@@ -357,13 +464,13 @@ npm test path/to/test.spec.ts
 
 ---
 
-## Session Startup: Reading Previous Handoff
+## Session Startup: Loading Previous Handoff
 
-When starting a new session:
+When starting a new session and the user asks to resume, continue, restore progress, or load a handoff, treat it as Load Mode:
 
 1. Check for `*-handoff.md` files in current directory
 2. If found, read the most recent one
-3. Display brief summary to user:
+3. Display brief loaded-state summary to user:
 
 ```
 Found handoff from {date}:
@@ -374,12 +481,11 @@ Target reader: {target_reader}
 Execution type: {execution_type}
 Progress: {completion percentage}
 Next step: {priority 1 task}
-
-Continue from here? [Y/n]
 ```
 
-4. If user confirms, use handoff content to restore full context
-5. Start with "Recommended First Steps" section
+4. Continue from the handoff without asking if the user's load intent is clear and the current agent is compatible with the target reader.
+5. Ask one concise question only if the handoff file choice is ambiguous, the target reader does not match the current agent, or the handoff appears stale/unsafe.
+6. Start with "Next Agent's First Action"; fall back to "Recommended First Steps" when the first action is stale or unsafe.
 
 ---
 

@@ -19,7 +19,7 @@
 | `deep-research` | `deep-research/` | 多轮搜索、反思、证据交叉验证的深度研究 | research、调查、综合分析、带引用报告 |
 | `diagram-viz` | `diagram/` | 生成 draw.io 图表或 HTML 信息图 | 画图、流程图、架构图、信息图、可视化 |
 | `github-repo-analyzer` | `github-repo-analyzer/` | 分析 GitHub 仓库功能、技术栈和架构 | 给出 GitHub repo URL 并要求分析 |
-| `handoff` | `handoff/` | 生成 agent-to-agent 技术交接文件 | handoff、保存进度、交接、checkpoint |
+| `handoff` | `handoff/` | 保存或加载 agent-to-agent 技术交接文件 | 保存进度、恢复进度、继续上次、load handoff、checkpoint |
 | `java-code-review` | `java-code-review/` | Java 代码审查，优先发现高风险缺陷 | Java review、PR review、风险审计 |
 | `linuxdo-news-analyzer` | `linuxdo-news-analyzer/` | 分析指定日期 linux.do 新闻 | linux.do 今日快讯、分析 linux.do YYYY-MM-DD |
 | `openai-weekly-blog` | `openai-weekly-blog/` | 分析 OpenAI 本周 Research/Engineering 博客 | OpenAI blog this week、OpenAI 本周博客 |
@@ -151,9 +151,9 @@ latest Claude posts
 
 ### handoff
 
-**用途：** 生成给下一个 AI agent 的技术交接文件，让 agent 之间通过文件接力。
+**用途：** 保存或加载给 AI agent 使用的技术交接文件，让 agent 之间通过文件接力。
 
-`handoff` skill 用于让 source agent 和 target agent 通过文件持续接力，而不是让用户做人肉中间层。
+`handoff` skill 用于让 source agent 和 target agent 通过文件持续接力，而不是让用户做人肉中间层。它现在有两个模式：Save Mode 用于创建或更新 handoff，Load Mode 用于读取已有 handoff 并继续执行。
 
 ![Handoff Agent Relay](assets/handoff-agent-relay-infographic.png)
 
@@ -162,22 +162,34 @@ HTML 源文件：`assets/handoff-agent-relay-infographic.html`
 **适合场景：**
 
 - 保存进度、暂停、切换任务、上下文接近上限。
+- 读取已有 handoff、恢复进度、继续上次任务。
 - 让 Claude Code 和 Codex 等不同 agent 异步协作。
 - 将 review findings、实现状态、失败尝试、验证命令沉淀为可执行上下文。
 
 **关键机制：**
 
-- 先明确 `Target reader` 和 `Execution type`。
+- 先判断是 `Save Mode` 还是 `Load Mode`；只有用户意图模糊时才询问。
+- Save Mode 会明确 `Source agent`、`Target reader` 和 `Execution type`。
+- Load Mode 会先定位 handoff 文件，再读取 `## 0. Handoff Routing` 和 `Next Agent's First Action`。
 - handoff 文件自带 `How to read this handoff` 和 `Next Agent's First Action`。
 - 继续接力时保留事实和决策，只更新 routing、progress、pending tasks 和 next action。
+- 多个 handoff 文件存在时，只有最近修改文件能安全匹配用户意图才自动选择，否则询问文件路径。
 
 **示例：**
+
+Save Mode:
 
 ```text
 请生成 handoff。
 目标读者：Codex
 执行类型：code review
 重点 review 当前 diff 的 bug、回归风险和缺失测试。
+```
+
+Load Mode:
+
+```text
+从 260531-handoff.md 继续。
 ```
 
 ### java-code-review

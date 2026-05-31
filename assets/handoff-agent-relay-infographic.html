@@ -329,89 +329,113 @@
   <main class="diagram-wrapper">
     <header>
       <div>
-        <h1>Handoff 驱动的 Agent 接力流程</h1>
-        <p class="subtitle">handoff 文件不是人类摘要，而是 target agent 的任务入口：保留事实和关键决策，更新路由与下一步动作，让 source agent 与 target agent 通过共享工作记忆持续协作。</p>
+        <h1>Handoff Save / Load Agent 接力流程</h1>
+        <p class="subtitle">handoff 文件不是人类摘要，而是 agent 的可执行任务入口：Save Mode 负责沉淀当前上下文，Load Mode 负责读取文件并恢复执行；source agent、target reader 与 execution type 共同决定下一步动作。</p>
       </div>
       <div class="legend" aria-label="legend">
-        <span class="tag" style="color:var(--blue)"><span class="dot"></span>启动</span>
-        <span class="tag" style="color:var(--green)"><span class="dot"></span>写入</span>
+        <span class="tag" style="color:var(--blue)"><span class="dot"></span>模式判断</span>
+        <span class="tag" style="color:var(--green)"><span class="dot"></span>Save</span>
+        <span class="tag" style="color:var(--violet)"><span class="dot"></span>Load</span>
         <span class="tag" style="color:var(--amber)"><span class="dot"></span>执行</span>
-        <span class="tag" style="color:var(--indigo)"><span class="dot"></span>接力</span>
-        <span class="tag" style="color:var(--violet)"><span class="dot"></span>恢复</span>
+        <span class="tag" style="color:var(--indigo)"><span class="dot"></span>接力更新</span>
       </div>
     </header>
 
     <section class="flow" aria-label="handoff flow">
       <div class="phase-wrap">
-        <div class="badge blue">1 触发与澄清</div>
+        <div class="badge blue">1 先判定模式</div>
         <section class="phase blue">
           <div class="card">
-            <div class="card-title"><span class="icon blue">A</span>Source Agent 启动 handoff</div>
-            <div class="item event">用户说 handoff / 保存进度 / 交接，或上下文接近限制。</div>
-            <div class="item info">默认文件名：<code>YYMMDD-handoff.md</code>，除非用户指定路径。</div>
+            <div class="card-title"><span class="icon blue">?</span>Step 0: Determine Mode</div>
+            <div class="item ok">保存进度 / checkpoint / 暂停 → <code>Save Mode</code>。</div>
+            <div class="item ok">继续上次 / 恢复进度 / load handoff → <code>Load Mode</code>。</div>
+            <div class="item warn">只说 handoff / 交接 / 处理 handoff 时，才问 save 还是 load。</div>
           </div>
           <div class="card">
-            <div class="card-title"><span class="icon blue">?</span>先确定路由</div>
-            <div class="item ok">明确 <code>Target reader</code>：Codex / Claude Code / next AI agent。</div>
-            <div class="item ok">明确 <code>Execution type</code>：继续实现 / review / debug / 架构判断。</div>
-            <div class="item warn">任一字段不能推断时，只问一个覆盖两者的澄清问题。</div>
+            <div class="card-title"><span class="icon blue">A</span>澄清最小化</div>
+            <div class="item info">能从措辞和上下文安全推断时，直接进入对应模式。</div>
+            <div class="item info">不要为了 <code>Source agent</code> 提问；由当前运行身份自动推断。</div>
+            <div class="item danger">避免把明确的“继续上次”误当成 dump。</div>
           </div>
         </section>
         <svg class="connector" viewBox="0 0 38 56">
           <defs><marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/></marker></defs>
           <path d="M2,28 C13,28 22,28 36,28" stroke="#2563eb" stroke-width="2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-blue)"/>
-          <text x="5" y="20" fill="#2563eb">route</text>
+          <text x="5" y="20" fill="#2563eb">mode</text>
         </svg>
       </div>
 
       <div class="phase-wrap">
-        <div class="badge green">2 生成自举任务包</div>
+        <div class="badge green">2 Save Mode 写入</div>
         <section class="phase green">
           <div class="card">
-            <div class="card-title"><span class="icon green">0</span>Handoff Routing</div>
-            <div class="item ok">写清 target agent 的身份、执行类型、期望行为和边界。</div>
-            <div class="item ok">加入 <code>How to read this handoff</code>：先读 routing，再执行 first action。</div>
-            <div class="item warn">若从上一棒改派，必须写 <code>Reroute reason</code>。</div>
+            <div class="card-title"><span class="icon green">S</span>创建或更新文件</div>
+            <div class="item event">默认写入 <code>YYMMDD-handoff.md</code>，除非用户指定路径。</div>
+            <div class="item ok">写清 <code>Source agent</code>、<code>Target reader</code>、<code>Execution type</code>。</div>
+            <div class="item warn">target 或 execution 不能推断时，只问一个覆盖两者的问题。</div>
           </div>
           <div class="card">
-            <div class="card-title"><span class="icon green">M</span>共享工作记忆</div>
-            <div class="item info">保留目标、进度、关键上下文、重要决策。</div>
+            <div class="card-title"><span class="icon green">M</span>沉淀可执行上下文</div>
+            <div class="item info">保留目标、进度、关键上下文、重要决策和假设。</div>
             <div class="item info">记录 findings、失败方案、风险、文件清单、git 状态。</div>
-            <div class="item ok">写入精确路径、函数、命令和验证结果。</div>
+            <div class="item ok">写入 <code>Recommended First Steps</code> 与 <code>Next Agent's First Action</code>。</div>
           </div>
         </section>
         <svg class="connector" viewBox="0 0 38 56">
           <defs><marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#16a34a"/></marker></defs>
           <path d="M2,28 C13,28 22,28 36,28" stroke="#16a34a" stroke-width="2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-green)"/>
-          <text x="3" y="20" fill="#16a34a">read</text>
+          <text x="3" y="20" fill="#16a34a">save</text>
         </svg>
       </div>
 
       <div class="phase-wrap">
-        <div class="badge amber">3 Target Agent 执行</div>
-        <section class="phase amber">
+        <div class="badge violet">3 Load Mode 恢复</div>
+        <section class="phase violet">
           <div class="card">
-            <div class="card-title"><span class="icon amber">B</span>只按文件启动</div>
-            <div class="item ok">把 handoff 当任务入口，不依赖聊天上下文。</div>
-            <div class="item ok">先执行 <code>Next Agent's First Action</code>，再扩展探索。</div>
-            <div class="item danger">不要把 review 任务扩大成重构，或把 debug 任务扩大成架构设计。</div>
+            <div class="card-title"><span class="icon violet">F</span>先定位 handoff 文件</div>
+            <div class="item ok">用户给了有效路径，直接读取。</div>
+            <div class="item ok">当前目录只有一个 <code>*-handoff.md</code>，直接读取。</div>
+            <div class="item warn">多个候选且最近修改不能安全匹配时，询问文件路径。</div>
           </div>
           <div class="card">
-            <div class="card-title"><span class="icon amber">✓</span>产出结论</div>
-            <div class="item info">按 execution type 产出：findings / 修复 / debug 结论 / 架构判断。</div>
+            <div class="card-title"><span class="icon violet">R</span>先读路由再恢复</div>
+            <div class="item ok">先读 <code>## 0. Handoff Routing</code>，提取 source / target / execution。</div>
+            <div class="item info">简短汇报 loaded state，然后从 <code>Next Agent's First Action</code> 开始。</div>
+            <div class="item danger">target reader 明显不匹配时，先告知用户并确认是否继续。</div>
+          </div>
+        </section>
+        <svg class="connector" viewBox="0 0 38 56">
+          <defs><marker id="arrow-violet" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#7c3aed"/></marker></defs>
+          <path d="M2,28 C13,28 22,28 36,28" stroke="#7c3aed" stroke-width="2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-violet)"/>
+          <text x="3" y="20" fill="#7c3aed">load</text>
+        </svg>
+      </div>
+
+      <div class="phase-wrap">
+        <div class="badge amber">4 按路由执行</div>
+        <section class="phase amber">
+          <div class="card">
+            <div class="card-title"><span class="icon amber">B</span>只按 handoff 启动</div>
+            <div class="item ok">把文件当任务入口，不依赖上一段聊天上下文。</div>
+            <div class="item ok">优先执行 <code>Next Agent's First Action</code>。</div>
+            <div class="item warn">若 first action 过期或不安全，先跑 recommended first steps 重新验证。</div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="icon amber">✓</span>产出匹配 execution</div>
+            <div class="item info">review 输出 findings；debug 定位根因；implementation 做最小修复和验证。</div>
             <div class="item ok">验证命令和证据写回状态，而不是只写结论。</div>
-            <div class="item warn">如果需要下一棒，准备接力更新。</div>
+            <div class="item danger">不要把 review 扩大成重构，或把 debug 扩大成架构设计。</div>
           </div>
         </section>
         <svg class="connector" viewBox="0 0 38 56">
           <defs><marker id="arrow-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#d97706"/></marker></defs>
           <path d="M2,28 C13,28 22,28 36,28" stroke="#d97706" stroke-width="2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-amber)"/>
-          <text x="3" y="20" fill="#d97706">relay</text>
+          <text x="3" y="20" fill="#d97706">exec</text>
         </svg>
       </div>
 
       <div class="phase-wrap">
-        <div class="badge indigo">4 接力更新</div>
+        <div class="badge indigo">5 接力更新</div>
         <section class="phase indigo">
           <div class="card">
             <div class="card-title"><span class="icon indigo">K</span>保留稳定内容</div>
@@ -420,33 +444,10 @@
             <div class="item danger">不要默认把 handoff 覆盖成全新总结。</div>
           </div>
           <div class="card">
-            <div class="card-title"><span class="icon indigo">N</span>只更新下一步协议</div>
-            <div class="item info">更新 target reader、execution type、expected behavior、out of scope。</div>
-            <div class="item info">更新 current progress、pending tasks、recommended first steps。</div>
+            <div class="card-title"><span class="icon indigo">N</span>更新下一步协议</div>
+            <div class="item info">更新 source / target / execution、current progress、pending tasks。</div>
+            <div class="item info">刷新 recommended first steps 和 next agent first action。</div>
             <div class="item warn">切换 target 或执行类型时，写明 reroute reason。</div>
-          </div>
-        </section>
-        <svg class="connector" viewBox="0 0 38 56">
-          <defs><marker id="arrow-indigo" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#4338ca"/></marker></defs>
-          <path d="M2,28 C13,28 22,28 36,28" stroke="#4338ca" stroke-width="2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-indigo)"/>
-          <text x="2" y="20" fill="#4338ca">next</text>
-        </svg>
-      </div>
-
-      <div class="phase-wrap">
-        <div class="badge violet">5 下一棒恢复</div>
-        <section class="phase violet">
-          <div class="card">
-            <div class="card-title"><span class="icon violet">R</span>读取最近 handoff</div>
-            <div class="item ok">新 session 检查 <code>*-handoff.md</code>，读取最新文件。</div>
-            <div class="item info">展示摘要：任务、execution type、进度、下一步。</div>
-            <div class="item warn">用户确认后，按 Recommended First Steps 恢复上下文。</div>
-          </div>
-          <div class="card">
-            <div class="card-title"><span class="icon violet">∞</span>持续异步协作</div>
-            <div class="item ok">source agent 与 target agent 通过文件交换状态。</div>
-            <div class="item info">人类只负责投递文件、决定下一棒和验收。</div>
-            <div class="item ok">完成后可删除 handoff，未完成则继续接力。</div>
           </div>
         </section>
       </div>
@@ -454,19 +455,19 @@
 
     <section class="panel" aria-label="summary rules">
       <article class="note">
-        <h2><span class="num blue">1</span>核心不变量</h2>
-        <p>handoff 是给下一位 AI agent 的技术交接，不是给用户看的摘要。它必须包含可执行上下文：路径、函数、命令、验证状态、失败尝试和决策理由。</p>
-        <div class="rule">stable memory = facts + decisions + evidence + failed attempts</div>
+        <h2><span class="num blue">1</span>模式入口</h2>
+        <p>所有请求先判断 save 还是 load。只有“handoff / 交接”这类模糊词才澄清；明确恢复进度时直接读取，明确保存进度时直接写入。</p>
+        <div class="rule">mode = save | load | ask-if-ambiguous</div>
       </article>
       <article class="note">
-        <h2><span class="num green">2</span>接力更新原则</h2>
-        <p>同一任务继续推进时，保留工作日志和关键结论；只更新路由、当前进度、待办和 next action。换目标或换执行类型时，必须写明改派原因。</p>
-        <div class="rule">update = routing + progress + pending tasks + first action</div>
+        <h2><span class="num green">2</span>路由与文件定位</h2>
+        <p>Save 写清 source agent、target reader 和 execution type。Load 先定位 handoff 文件；找不到、路径无效或多个候选不安全时，才询问路径。</p>
+        <div class="rule">routing = source + target + execution</div>
       </article>
       <article class="note">
-        <h2><span class="num amber">3</span>边界控制</h2>
-        <p>Target agent 先确认自己的角色，再执行指定动作；不要扩大任务范围。review 就输出 findings，debug 就定位根因，implementation 就做最小修复和验证。</p>
-        <div class="rule">agent behavior follows Target reader + Execution type</div>
+        <h2><span class="num amber">3</span>执行边界</h2>
+        <p>Load 后先读 routing，再按 Next Agent's First Action 执行。任务范围由 target reader 和 execution type 限定，过期时先验证再继续。</p>
+        <div class="rule">execution follows routing + first action</div>
       </article>
     </section>
   </main>
