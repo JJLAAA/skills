@@ -53,7 +53,7 @@ SKILL_DIR=~/.codex/skills/aihot \
 - AI 模型发布列表
 - 最近 3 天 AI 行业动态
 
-Skill 会自动调用 [aihot.virxact.com](https://aihot.virxact.com) 的公开 API（无须配置 API Key），整理成中文 markdown 简报回给你。
+Skill 会自动调用 [aihot.virxact.com](https://aihot.virxact.com) 的公开 API（无须配置 API Key），并用可识别的 `aihot-skill/` User-Agent 自报身份，不伪装浏览器；返回后整理成中文 markdown 简报回给你。
 
 ## 不需要登录、不需要 API Key
 
