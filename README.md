@@ -19,6 +19,7 @@
 | `deep-research` | `deep-research/` | 多轮搜索、反思、证据交叉验证的深度研究 | research、调查、综合分析、带引用报告 |
 | `diagram-viz` | `diagram/` | 生成 draw.io 图表或 HTML 信息图 | 画图、流程图、架构图、信息图、可视化 |
 | `github-repo-analyzer` | `github-repo-analyzer/` | 分析 GitHub 仓库功能、技术栈和架构 | 给出 GitHub repo URL 并要求分析 |
+| `goal-ready-coach` | `goal-ready-coach/` | 把模糊任务收敛为可自主执行的 Goal Contract | Goal Ready、转成 Goal、创建 Goal 前先澄清、小步快跑、把需求问清楚 |
 | `handoff` | `handoff/` | 保存或加载 agent-to-agent 技术交接文件 | 保存进度、恢复进度、继续上次、load handoff、checkpoint |
 | `java-code-review` | `java-code-review/` | Java 代码审查，优先发现高风险缺陷 | Java review、PR review、风险审计 |
 | `linuxdo-news-analyzer` | `linuxdo-news-analyzer/` | 分析指定日期 linux.do 新闻 | linux.do 今日快讯、分析 linux.do YYYY-MM-DD |
@@ -29,6 +30,7 @@
 | `sync-docs-index` | `sync-docs-index/` | 同步文档目录索引和摘要，整理单篇文章 | 更新索引、同步文档摘要、整理文章 |
 | `tap-adapter-author` | `tap-adapter-author/` | 为新站点或命令编写 TAP adapter | 写 TAP adapter、适配新网站 |
 | `web-tech-article-analyzer` | `web-tech-article-analyzer/` | 用 7 层框架分析技术文章、URL、博客和帖子 | 分析技术文章、URL、博客、Reddit、X、WeChat |
+| `wiki-index-audit` | `wiki-index-audit/` | 审计 Markdown Wiki 关键认知召回层，检查腐化和召回质量 | 审计关键认知索引、检查 Wiki 腐化、知识库定期健检 |
 
 ## Skills
 
@@ -148,6 +150,32 @@ latest Claude posts
 分析这个 GitHub 仓库：https://github.com/example/project
 总结这个 repo 的技术栈和核心功能。
 ```
+
+### goal-ready-coach
+
+**用途：** 把尚不明确、需要小步推进的任务收敛为一个可交给 Agent 自主执行并客观验收的 Goal Contract，并在使用者显式确认后才创建 Goal。
+
+它维护一份 Readiness Ledger，从已有对话和安全、只读的调查中提取信息，不为 Agent 能自行查证的事实打扰用户。每轮只推进一个影响最大的阻塞项，按 `结果 → 验收 → 范围 → 决策权 → 上下文 → 停止条件` 的优先级排序。六项门槛全部 `READY` 才进入 `GOAL READY`，再输出自包含的 Goal Contract，并通过两阶段提交门禁等待使用者明确确认后才调用 `create_goal`。
+
+![双队列 AI 任务工作流](assets/dual-queue-goal-workflow.svg)
+
+上图说明：探索队列在 `goal-ready-coach` 驱动下逐项消除不确定性，通过 Readiness Gate 后转入 Goal 交付队列；两个队列的并行度都由人的容量（判定容量、验收容量）决定。SVG 源文件：`assets/dual-queue-goal-workflow.svg`
+
+**适合场景：**
+
+- 需求还没想清楚、想把任务问清楚再开始。
+- 模糊输入（如"优化一下""做得更好"）需要收敛为可验收目标。
+- 创建 Goal 前需要先把剩余不确定性压到 Agent 授权范围内。
+
+**示例：**
+
+```text
+把这个需求转成 Goal。
+任务还没想清楚，帮我用小步快跑问清楚。
+优化一下后台查询性能，帮我变成 Goal。
+```
+
+**注意：** 澄清期间只做只读调查和无副作用验证，不会提前实现 Goal；只有使用者明确表达"确认创建 Goal"等无歧义意图后才会调用 `create_goal`。
 
 ### handoff
 
@@ -345,12 +373,35 @@ OpenAI weekly articles 20260314
 用 7 层框架拆解这组文章。
 ```
 
+### wiki-index-audit
+
+**用途：** 审计 Markdown LLM Wiki 中 `关键认知索引.md` 这一召回层的质量，覆盖卡片结构、索引膨胀、语义重复、边界模糊、来源失效、跨页面矛盾和真实问题召回命中。
+
+它与 `sync-docs-index` 分工：后者负责文档摘要、README 路由和交叉链接的日常同步；本 Skill 负责低频但更重的语义治理。默认运行 `full` 审计但只生成报告——未经用户确认，不合并、删除卡片，不创建专题页，也不改变知识结构。
+
+**适合场景：**
+
+- 定期（每月、卡片数量达阈值、体积增长超阈值）对关键认知索引做健检。
+- 出现漏召回、误召回、来源失效或卡片间矛盾后立即排查。
+- 大规模专题整理前后评估召回层质量。
+
+**示例：**
+
+```text
+帮我审计一下关键认知索引。
+检查一下 Wiki 是否有腐化。
+卡片新增较多，跑一次 full 审计。
+```
+
+**注意：** 审计和 Automation 运行默认只报告；修复（`fix`）需要用户确认具体变更集，且修复后必须重新运行 full 审计、retrieval eval 和本地 Markdown 链接校验才能更新基线。
+
 ## Repository Layout
 
 ```text
 .
 ├── README.md
 ├── assets/
+│   ├── dual-queue-goal-workflow.svg
 │   ├── handoff-agent-relay-infographic.html
 │   └── handoff-agent-relay-infographic.png
 ├── handoff/

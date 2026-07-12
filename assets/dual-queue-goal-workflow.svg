@@ -1,0 +1,644 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1000" height="728" viewBox="0 0 1000 728">
+  <foreignObject width="100%" height="100%">
+    <html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          * { box-sizing: border-box; letter-spacing: 0; }
+          body {
+            margin: 0;
+            padding: 20px;
+            background: #f3f6fa;
+            color: #172033;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+          }
+          .diagram-wrapper {
+            width: 960px;
+            max-width: 960px;
+            margin: 0 auto;
+          }
+          .header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 24px;
+            margin-bottom: 18px;
+          }
+          h1 {
+            margin: 0 0 5px;
+            font-size: 27px;
+            line-height: 1.2;
+            font-weight: 780;
+            color: #111827;
+          }
+          .subtitle {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.55;
+            color: #64748b;
+          }
+          .legend {
+            display: flex;
+            gap: 12px;
+            flex: 0 0 auto;
+            padding-bottom: 3px;
+            font-size: 11px;
+            color: #475569;
+          }
+          .legend-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+          .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+          .flow-map {
+            background: #ffffff;
+            border: 1px solid #d9e0ea;
+            border-radius: 14px;
+            padding: 25px 18px 20px;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.07);
+          }
+          .main-grid {
+            display: grid;
+            grid-template-columns: 104px 34px 154px 42px minmax(0, 1fr);
+            align-items: stretch;
+          }
+          .center-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .entry {
+            width: 104px;
+            min-height: 106px;
+            padding: 15px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border: 1.5px solid #93c5fd;
+            border-radius: 12px;
+            background: linear-gradient(145deg, #eff6ff, #dbeafe);
+          }
+          .entry-mark {
+            width: 28px;
+            height: 28px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 7px;
+            background: #2563eb;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 800;
+          }
+          .entry strong { font-size: 15px; color: #1e3a8a; }
+          .entry small { margin-top: 5px; font-size: 10.5px; line-height: 1.35; color: #4b6b9a; }
+          .h-arrow {
+            position: relative;
+            width: 26px;
+            height: 2px;
+            background: #64748b;
+          }
+          .h-arrow::after {
+            content: "";
+            position: absolute;
+            right: -1px;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 7px solid #64748b;
+          }
+          .gate {
+            width: 154px;
+            padding: 14px 12px 12px;
+            border: 1.5px solid #fbbf24;
+            border-radius: 12px;
+            background: linear-gradient(145deg, #fffbeb, #fef3c7);
+            text-align: center;
+          }
+          .gate-kicker {
+            margin-bottom: 3px;
+            font-size: 9.5px;
+            font-weight: 750;
+            color: #a16207;
+            text-transform: uppercase;
+          }
+          .gate-title { font-size: 16px; font-weight: 800; color: #78350f; }
+          .gate-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-top: 10px;
+          }
+          .gate-list span {
+            padding: 4px 3px;
+            border: 1px solid #fde68a;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.75);
+            font-size: 9.5px;
+            font-weight: 650;
+            color: #854d0e;
+          }
+          .skill-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            border: 1px solid #c4b5fd;
+            background: linear-gradient(145deg, #f5f3ff, #ede9fe);
+            color: #6d28d9;
+            font-size: 9.5px;
+            font-weight: 780;
+            white-space: nowrap;
+          }
+          .skill-chip .skill-gear {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 13px;
+            height: 13px;
+            border-radius: 4px;
+            background: #7c3aed;
+            color: #ffffff;
+            font-size: 9px;
+          }
+          .gate-skill {
+            margin-top: 11px;
+            padding-top: 9px;
+            border-top: 1px dashed #fcd34d;
+          }
+          .gate-skill-cap {
+            margin-top: 5px;
+            font-size: 8.5px;
+            line-height: 1.35;
+            font-weight: 650;
+            color: #6d28d9;
+          }
+          .lane-skill {
+            position: absolute;
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+          }
+          .fork {
+            position: relative;
+            min-height: 388px;
+          }
+          .fork::before {
+            content: "";
+            position: absolute;
+            left: 14px;
+            top: 93px;
+            bottom: 93px;
+            width: 2px;
+            background: #94a3b8;
+          }
+          .fork::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: calc(50% - 1px);
+            width: 15px;
+            height: 2px;
+            background: #94a3b8;
+          }
+          .fork-arm {
+            position: absolute;
+            left: 14px;
+            width: 27px;
+            height: 2px;
+          }
+          .fork-arm::after {
+            content: "";
+            position: absolute;
+            right: -1px;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+          }
+          .fork-goal { top: 92px; background: #16a34a; }
+          .fork-goal::after { border-left: 7px solid #16a34a; }
+          .fork-explore { bottom: 92px; background: #2563eb; }
+          .fork-explore::after { border-left: 7px solid #2563eb; }
+          .lanes {
+            position: relative;
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 18px;
+          }
+          .return-path { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+          .return-path i { position: absolute; display: block; }
+          .rp-h { height: 0; border-top: 1.6px dashed #f59e0b; }
+          .rp-v { width: 0; border-left: 1.6px dashed #f59e0b; }
+          .rp-head {
+            position: absolute;
+            width: 0; height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 7px solid #f59e0b;
+          }
+          .rp-label {
+            position: absolute;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            font-size: 8.5px;
+            font-weight: 750;
+            color: #b45309;
+            white-space: nowrap;
+          }
+          .promote-path { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+          .promote-path i { position: absolute; display: block; }
+          .pp-h { height: 0; border-top: 1.6px solid #16a34a; }
+          .pp-v { width: 0; border-left: 1.6px solid #16a34a; }
+          .pp-head {
+            position: absolute;
+            width: 0; height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 7px solid #16a34a;
+          }
+          .pp-label {
+            position: absolute;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            font-size: 8.5px;
+            font-weight: 750;
+            color: #15803d;
+            white-space: nowrap;
+          }
+          .lane {
+            position: relative;
+            min-height: 185px;
+            padding: 24px 12px 12px;
+            border-radius: 13px;
+          }
+          .goal-lane {
+            border: 1.5px solid #86efac;
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+          }
+          .explore-lane {
+            border: 1.5px solid #93c5fd;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+          }
+          .lane-badge {
+            position: absolute;
+            top: -12px;
+            left: 15px;
+            z-index: 2;
+            padding: 4px 12px;
+            border-radius: 16px;
+            color: #ffffff;
+            font-size: 11px;
+            line-height: 1.3;
+            font-weight: 760;
+            box-shadow: 0 2px 5px rgba(15, 23, 42, 0.15);
+          }
+          .goal-lane .lane-badge { background: #15803d; }
+          .explore-lane .lane-badge { background: #1d4ed8; }
+          .lane-state {
+            position: absolute;
+            top: 7px;
+            right: 12px;
+            font-size: 9.5px;
+            font-weight: 700;
+          }
+          .goal-lane .lane-state { color: #15803d; }
+          .explore-lane .lane-state { color: #1d4ed8; }
+          .lane-flow {
+            height: 105px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 5px;
+          }
+          .step {
+            min-width: 0;
+            height: 86px;
+            padding: 10px 7px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+          }
+          .goal-lane .step { border: 1px solid #bbf7d0; }
+          .explore-lane .step { border: 1px solid #bfdbfe; }
+          .step.queue { width: 83px; }
+          .step.pull { width: 96px; }
+          .step.execute { width: 82px; }
+          .step.verify { width: 105px; }
+          .step.finish { width: 65px; }
+          .step.focus { width: 92px; }
+          .step.reduce { width: 105px; }
+          .step.checkpoint { width: 82px; }
+          .step.outcomes { width: 121px; padding: 7px; }
+          .step-index {
+            width: 21px;
+            height: 21px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: 800;
+          }
+          .goal-lane .step-index { background: #16a34a; }
+          .explore-lane .step-index { background: #2563eb; }
+          .step strong { font-size: 11.5px; line-height: 1.25; color: #1f2937; }
+          .step small { margin-top: 4px; font-size: 9px; line-height: 1.25; color: #64748b; }
+          .flow-arrow {
+            flex: 0 0 13px;
+            color: #94a3b8;
+            font-size: 17px;
+            line-height: 1;
+            text-align: center;
+          }
+          .outcome {
+            width: 100%;
+            padding: 5px 4px;
+            border-radius: 5px;
+            font-size: 9px;
+            line-height: 1.25;
+            font-weight: 720;
+          }
+          .outcome + .outcome { margin-top: 5px; }
+          .outcome-ready { background: #dcfce7; color: #166534; border-left: 3px solid #10b981; }
+          .outcome-loop { background: #fef3c7; color: #92400e; border-left: 3px solid #f59e0b; }
+          .lane-note {
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.72);
+            font-size: 9.5px;
+            color: #475569;
+          }
+          .lane-note b { font-weight: 760; }
+          .goal-lane .lane-note { border-left: 3px solid #10b981; }
+          .explore-lane .lane-note { border-left: 3px solid #3b82f6; }
+          .principle {
+            margin-top: 16px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border: 1px dashed #94a3b8;
+            border-radius: 9px;
+            background: #f8fafc;
+          }
+          .principle strong { font-size: 12px; color: #0f172a; }
+          .principle span { font-size: 10.5px; color: #64748b; }
+          .principle-emphasis {
+            flex: 0 0 auto;
+            padding: 5px 10px;
+            border-radius: 12px;
+            background: #fff7ed;
+            color: #9a3412 !important;
+            font-weight: 750;
+          }
+          .guardrail-title {
+            margin: 16px 0 9px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 780;
+            color: #334155;
+          }
+          .guardrail-title::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #dbe2ea;
+          }
+          .guardrails {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+          }
+          .guardrail {
+            min-height: 73px;
+            padding: 10px 11px;
+            display: grid;
+            grid-template-columns: 23px 1fr;
+            gap: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+          }
+          .guardrail-number {
+            width: 23px;
+            height: 23px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #334155;
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: 800;
+          }
+          .guardrail strong { display: block; margin: 1px 0 3px; font-size: 10.5px; color: #1e293b; }
+          .guardrail p { margin: 0; font-size: 9px; line-height: 1.35; color: #64748b; }
+        </style>
+      </head>
+      <body>
+        <div class="diagram-wrapper">
+          <div class="header">
+            <div>
+              <h1>双队列 AI 任务工作流</h1>
+              <p class="subtitle">探索队列降低不确定性，Goal 队列在明确约束下完成交付</p>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><i class="legend-dot" style="background:#16a34a"></i>Goal 交付</span>
+              <span class="legend-item"><i class="legend-dot" style="background:#2563eb"></i>小步探索</span>
+              <span class="legend-item"><i class="legend-dot" style="background:#f59e0b"></i>判定与止损</span>
+              <span class="legend-item"><i class="legend-dot" style="background:#7c3aed"></i>Skill 支撑</span>
+            </div>
+          </div>
+
+          <div class="flow-map">
+            <div class="main-grid">
+              <div class="center-cell">
+                <div class="entry">
+                  <div class="entry-mark">IN</div>
+                  <strong>任务进入</strong>
+                  <small>需求、问题<br />或改进想法</small>
+                </div>
+              </div>
+
+              <div class="center-cell"><div class="h-arrow"></div></div>
+
+              <div class="center-cell">
+                <div class="gate">
+                  <div class="gate-kicker">Readiness Gate</div>
+                  <div class="gate-title">Goal Ready？</div>
+                  <div class="gate-list">
+                    <span>产出明确</span>
+                    <span>边界明确</span>
+                    <span>可验收</span>
+                    <span>上下文齐备</span>
+                    <span>风险可控</span>
+                    <span>有停止条件</span>
+                  </div>
+                  <div class="gate-skill">
+                    <span class="skill-chip"><span class="skill-gear">⚙</span>goal-ready-coach</span>
+                    <div class="gate-skill-cap">澄清 · 逐项判定 · 产出契约</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="fork">
+                <div class="fork-arm fork-goal"></div>
+                <div class="fork-arm fork-explore"></div>
+              </div>
+
+              <div class="lanes">
+                <section class="lane goal-lane">
+                  <div class="lane-badge">Goal 交付队列</div>
+                  <div class="lane-state">已就绪</div>
+                  <div class="lane-flow">
+                    <div class="step queue">
+                      <div class="step-index">G1</div>
+                      <strong>Goal 队列</strong>
+                      <small>积攒可交付任务</small>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="step pull">
+                      <div class="step-index">G2</div>
+                      <strong>按需拉取</strong>
+                      <small>取决于人的验收容量</small>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="step execute">
+                      <div class="step-index">G3</div>
+                      <strong>受约束执行</strong>
+                      <small>遵守范围与边界</small>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="step verify">
+                      <div class="step-index">G4</div>
+                      <strong>验证与验收</strong>
+                      <small>自动检查 + 人工判断</small>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="step finish">
+                      <div class="step-index">OK</div>
+                      <strong>完成</strong>
+                      <small>再拉下一批</small>
+                    </div>
+                  </div>
+                  <div class="lane-note"><b>拉取式执行：</b> 验收完成后，才从队列领取下一批 Goal</div>
+                </section>
+
+                <section class="lane explore-lane">
+                  <div class="lane-badge">小步探索队列</div>
+                  <span class="skill-chip lane-skill"><span class="skill-gear">⚙</span>goal-ready-coach 驱动</span>
+                  <div class="lane-state">尚未就绪</div>
+                  <div class="lane-flow">
+                    <div class="step queue">
+                      <div class="step-index">E1</div>
+                      <strong>探索队列</strong>
+                      <small>排序待澄清任务</small>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="step focus">
+                      <div class="step-index">E2</div>
+                      <strong>并行探索</strong>
+                      <small>取决于人的并行容量</small>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="step reduce">
+                      <div class="step-index">E3</div>
+                      <strong>消除一个不确定性</strong>
+                      <small>每步只解决一个问题</small>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="step checkpoint">
+                      <div class="step-index">E4</div>
+                      <strong>检查点</strong>
+                      <small>重新判定</small>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="step outcomes">
+                      <div class="outcome outcome-ready">Ready ↑ 转入 Goal 队列</div>
+                      <div class="outcome outcome-loop">未 Ready ↺ 下一小步 / 止损</div>
+                    </div>
+                  </div>
+                  <div class="lane-note"><b>探索产物：</b> 不是更多代码，而是更少的不确定性</div>
+                </section>
+
+                <div class="return-path">
+                  <i class="rp-h" style="top:120px;left:300px;width:285px;"></i>
+                  <i class="rp-v" style="top:120px;left:584px;height:70px;"></i>
+                  <i class="rp-h" style="top:188px;left:6px;width:579px;"></i>
+                  <i class="rp-v" style="top:188px;left:6px;height:67px;"></i>
+                  <i class="rp-h" style="top:255px;left:6px;width:10px;"></i>
+                  <i class="rp-head" style="top:250px;left:13px;"></i>
+                  <span class="rp-label" style="top:190px;left:250px;">验证不清 / 超范围 → 退回队列</span>
+                </div>
+
+                <div class="promote-path">
+                  <i class="pp-h" style="top:279px;left:536px;width:44px;"></i>
+                  <i class="pp-v" style="top:28px;left:580px;height:252px;"></i>
+                  <i class="pp-h" style="top:28px;left:53px;width:527px;"></i>
+                  <i class="pp-v" style="top:28px;left:53px;height:8px;"></i>
+                  <i class="pp-head" style="top:29px;left:48px;"></i>
+                  <span class="pp-label" style="top:20px;left:150px;">Ready → 转入 Goal 队列</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="principle">
+              <div>
+                <strong>调度原则：Goal 优先交付，探索并行解锁未就绪任务</strong>
+                <span>　并行度都由人的容量决定 —— 探索受「判定容量」约束、Goal 受「验收容量」约束</span>
+              </div>
+              <span class="principle-emphasis">批量排队，小批执行</span>
+            </div>
+
+            <div class="guardrail-title">运行护栏</div>
+            <div class="guardrails">
+              <div class="guardrail">
+                <span class="guardrail-number">01</span>
+                <div><strong>验收能力决定吞吐</strong><p>生成速度不能超过人的验证速度。</p></div>
+              </div>
+              <div class="guardrail">
+                <span class="guardrail-number">02</span>
+                <div><strong>并行探索，单点判定</strong><p>探针可并行，但人一次只做一个就绪判定。</p></div>
+              </div>
+              <div class="guardrail">
+                <span class="guardrail-number">03</span>
+                <div><strong>关键决策保留人类门禁</strong><p>架构、业务与不可逆操作必须确认。</p></div>
+              </div>
+              <div class="guardrail">
+                <span class="guardrail-number">04</span>
+                <div><strong>重复失败触发止损</strong><p>超出范围或验证不清时返回探索队列。</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  </foreignObject>
+</svg>

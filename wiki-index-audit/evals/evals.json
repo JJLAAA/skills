@@ -1,0 +1,34 @@
+{
+  "skill_name": "wiki-index-audit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "审计当前 Wiki 的关键认知索引，看看有没有重复、膨胀和失效来源。只给报告，不要直接改知识结构。",
+      "expected_output": "运行确定性脚本和语义复核，按 P0-P3 给出带证据的报告，不自动修复。",
+      "files": [
+        "关键认知索引.md",
+        ".wiki-audit/config.json",
+        ".wiki-audit/retrieval-evals.json"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我刚给关键认知索引加了 6 张卡，做一次快速健检。",
+      "expected_output": "使用 quick 模式检查字段、链接、规模和基线增长，并指出已越过新增卡片触发阈值。",
+      "files": [
+        "关键认知索引.md",
+        ".wiki-audit/config.json",
+        ".wiki-audit/baseline.json"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "上次审计认为两张卡应该合并，帮我直接整理。",
+      "expected_output": "先核对用户是否已经确认具体变更集；只有确认后进入 fix，并在修改后重跑 full、retrieval eval 和 Markdown 链接验证。",
+      "files": [
+        "关键认知索引.md",
+        ".wiki-audit/retrieval-evals.json"
+      ]
+    }
+  ]
+}
