@@ -1,13 +1,13 @@
 ---
 name: wiki-index-audit
-description: 审计 Markdown LLM Wiki 的关键认知召回层，检查卡片结构、索引膨胀、语义重复、边界模糊、来源失效、跨页面矛盾和真实问题召回质量。当用户要求审计关键认知索引、检查 Wiki 腐化、做知识库定期健检，或关键认知索引新增多张卡片后使用。默认只报告，不直接修改、合并、删除卡片或创建页面。
+description: 审计 Markdown LLM Wiki 的关键认知召回层，检查卡片结构、索引膨胀、语义重复、边界模糊、来源失效和跨页面矛盾，并复盘真实使用中暴露的漏召回或误召回。当用户要求审计关键认知索引、检查 Wiki 腐化、做知识库定期健检，或关键认知索引新增多张卡片后使用。默认只报告，不直接修改、合并、删除卡片或创建页面。
 ---
 
 # Wiki 关键认知索引审计
 
 ## 目标
 
-保护 `关键认知索引.md` 作为“召回层”的质量：卡片短、判断独立、触发清楚、来源可核验，并且真实问题能够命中正确卡片。
+保护 `关键认知索引.md` 作为“召回层”的质量：卡片短、判断独立、触发清楚、来源可核验。召回质量以日常真实查询复盘为主，不维护脱离真实使用的固定离线测试集。
 
 本 Skill 不替代 `sync-docs-index`：后者负责摘要和 README 同步；本 Skill 负责低频、较重的语义治理。
 
@@ -39,7 +39,7 @@ description: 审计 Markdown LLM Wiki 的关键认知召回层，检查卡片结
 2. 行动建议是否实质相同；
 3. 来源是否真的支撑核心判断；
 4. 卡片之间、卡片与来源之间是否矛盾；
-5. retrieval eval 的命中、漏召回和误召回分析。
+5. 如果存在已知的真实漏召回、误召回或边界混淆案例，将其作为语义审计证据。
 
 ### fix
 
@@ -53,7 +53,6 @@ description: 审计 Markdown LLM Wiki 的关键认知召回层，检查卡片结
 
 - `关键认知索引.md`
 - `.wiki-audit/config.json`
-- `.wiki-audit/retrieval-evals.json`
 - `.wiki-audit/baseline.json`（存在时）
 
 如果目标文件不存在，报告阻塞原因，不擅自创建替代索引。
@@ -67,7 +66,6 @@ python3 /Users/leo/.claude/skills/wiki-index-audit/scripts/audit_index.py \
   --index 关键认知索引.md \
   --config .wiki-audit/config.json \
   --baseline .wiki-audit/baseline.json \
-  --evals .wiki-audit/retrieval-evals.json \
   --mode full \
   --format json
 ```
@@ -101,18 +99,9 @@ python3 /Users/leo/.claude/skills/wiki-index-audit/scripts/audit_index.py \
 - `P2`：重复、过长、边界模糊、来源支撑较弱；
 - `P3`：措辞、关键词或路由优化。
 
-### 4. 运行 retrieval eval
+如果用户提供了、或当前上下文中存在已知的真实召回失败，将用户问题、实际路由、遗漏或误触发的卡片作为证据，判断原因是 README 路由缺口、任务语言缺失、卡片边界重叠，还是 Agent 没有遵守读取契约。没有真实案例时跳过，不构造假设性测试，也不为测试机械堆关键词。
 
-读取 `.wiki-audit/retrieval-evals.json`。对每个真实问题：
-
-1. 只根据标题、适用场景和触发关键词选出候选卡片；
-2. 与 `expected_cards`、`must_not_trigger` 比较；
-3. 记录漏召回、误召回和边界混淆；
-4. 再读取核心判断，验证最终选择。
-
-不要为了通过 eval 机械堆关键词。优先修正卡片边界和任务触发语言。
-
-### 5. 输出报告
+### 4. 输出报告
 
 使用以下结构：
 
@@ -130,29 +119,29 @@ python3 /Users/leo/.claude/skills/wiki-index-audit/scripts/audit_index.py \
 ## 候选合并或重写边界
 ## 候选拆页
 ## 来源与矛盾问题
-## 召回测试
+## 真实召回问题（如有）
 ## 建议变更集
 ```
 
 如果没有问题，明确写出检查覆盖面，不能只说“未发现问题”。
 
-### 6. 修复与复验
+### 5. 修复与复验
 
 用户确认具体变更集后：
 
 1. 先修改专题正文，再缩短或重写认知卡；
 2. 同步相关 README 路由和交叉引用；
 3. 不丢失原卡片中仍被来源支持的独立判断；
-4. 重新运行 full 审计和 retrieval eval；
-5. 验证本地 Markdown 链接；
-6. 只有所有计划项都有证据证明完成后，才更新基线：
+4. 重新运行 full 审计；
+5. 如果修改了召回字段，使用 2～3 个真实任务表述执行临时冒烟检查；冒烟问题无需长期保存，除非同类失败反复出现或后果严重；
+6. 验证本地 Markdown 链接；
+7. 只有所有计划项都有证据证明完成后，才更新基线：
 
 ```bash
 python3 /Users/leo/.claude/skills/wiki-index-audit/scripts/audit_index.py \
   --index 关键认知索引.md \
   --config .wiki-audit/config.json \
   --baseline .wiki-audit/baseline.json \
-  --evals .wiki-audit/retrieval-evals.json \
   --mode full \
   --format json \
   --update-baseline

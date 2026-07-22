@@ -2,8 +2,8 @@
 """Deterministic audit for a Markdown key-knowledge index.
 
 The script deliberately limits itself to mechanical evidence. Semantic claims,
-source fidelity, contradictions, and retrieval quality remain review tasks in
-SKILL.md.
+source fidelity, contradictions, and real-use recall failures remain review
+tasks in SKILL.md.
 """
 
 from __future__ import annotations
@@ -59,7 +59,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--index", default="关键认知索引.md")
     parser.add_argument("--config", default=".wiki-audit/config.json")
     parser.add_argument("--baseline", default=".wiki-audit/baseline.json")
-    parser.add_argument("--evals", default=".wiki-audit/retrieval-evals.json")
     parser.add_argument("--mode", choices=("quick", "full"), default="full")
     parser.add_argument("--format", choices=("json", "markdown"), default="json")
     parser.add_argument("--output", help="Write report to this path instead of stdout")
@@ -138,7 +137,6 @@ def audit(
     index_path: Path,
     config: dict[str, Any],
     baseline: dict[str, Any],
-    retrieval_evals: dict[str, Any],
     mode: str,
 ) -> dict[str, Any]:
     thresholds = config.get("thresholds", {})
@@ -170,26 +168,6 @@ def audit(
         if count > 1:
             findings.append(Finding("P1", "duplicate_title", title, f"同名卡片 {count} 张", "合并卡片或重写独立边界"))
 
-    eval_summary = {"eval_count": 0, "valid_references": True}
-    if mode == "full":
-        eval_items = retrieval_evals.get("evals", [])
-        if not isinstance(eval_items, list):
-            findings.append(Finding("P1", "invalid_eval_schema", "retrieval eval", "evals 必须是数组", "修复 retrieval-evals.json"))
-            eval_items = []
-        eval_summary["eval_count"] = len(eval_items)
-        known_titles = set(title_counts)
-        for item in eval_items:
-            if not isinstance(item, dict):
-                findings.append(Finding("P1", "invalid_eval_schema", "retrieval eval", "eval 条目必须是对象", "修复 retrieval-evals.json"))
-                eval_summary["valid_references"] = False
-                continue
-            eval_id = str(item.get("id", "missing-id"))
-            referenced = item.get("expected_cards", []) + item.get("must_not_trigger", [])
-            unknown = [title for title in referenced if title not in known_titles]
-            if unknown:
-                findings.append(Finding("P1", "unknown_eval_card", f"retrieval eval:{eval_id}", f"引用不存在的卡片：{', '.join(unknown)}", "改为真实卡片标题或补齐受来源支持的卡片"))
-                eval_summary["valid_references"] = False
-
     duplicate_candidates: list[dict[str, Any]] = []
     if mode == "full":
         threshold = float(thresholds.get("keyword_jaccard_review", 0.35))
@@ -219,11 +197,11 @@ def audit(
 
     trigger_growth = float(config.get("schedule", {}).get("trigger_growth_percent", 20))
     if delta["growth_percent"] is not None and delta["growth_percent"] > trigger_growth:
-        findings.append(Finding("P2", "growth_trigger", "整个索引", f"相比基线增长 {delta['growth_percent']}%，触发阈值 {trigger_growth}%", "执行完整语义审计与召回测试"))
+        findings.append(Finding("P2", "growth_trigger", "整个索引", f"相比基线增长 {delta['growth_percent']}%，触发阈值 {trigger_growth}%", "执行完整语义审计"))
 
     trigger_cards = int(config.get("schedule", {}).get("trigger_after_new_cards", 5))
     if delta["card_count"] is not None and delta["card_count"] >= trigger_cards:
-        findings.append(Finding("P2", "new_cards_trigger", "整个索引", f"相比基线新增 {delta['card_count']} 张卡片，触发阈值 {trigger_cards}", "执行完整语义审计与召回测试"))
+        findings.append(Finding("P2", "new_cards_trigger", "整个索引", f"相比基线新增 {delta['card_count']} 张卡片，触发阈值 {trigger_cards}", "执行完整语义审计"))
 
     finding_counts = {severity: sum(1 for finding in findings if finding.severity == severity) for severity in SEVERITY_RANK}
     status = "healthy"
@@ -247,13 +225,12 @@ def audit(
         },
         "findings": [asdict(finding) for finding in findings],
         "duplicate_candidates": duplicate_candidates,
-        "retrieval_eval": eval_summary,
         "cards": [asdict(card) for card in cards],
         "semantic_checks_pending": [
             "候选卡片是否表达相同实际行动",
             "来源正文是否支撑核心判断",
             "卡片之间及卡片与来源之间是否矛盾",
-            "retrieval eval 是否命中预期卡片且避免误召回",
+            "近期真实使用中的漏召回、误召回或边界混淆（如有）",
         ],
     }
 
@@ -316,14 +293,12 @@ def main() -> int:
     index_path = Path(args.index).resolve()
     config_path = Path(args.config).resolve()
     baseline_path = Path(args.baseline).resolve()
-    evals_path = Path(args.evals).resolve()
     try:
         if not index_path.exists():
             raise ValueError(f"index does not exist: {index_path}")
         config = load_json(config_path, required=True)
         baseline = load_json(baseline_path, required=False)
-        retrieval_evals = load_json(evals_path, required=args.mode == "full")
-        report = audit(index_path, config, baseline, retrieval_evals, args.mode)
+        report = audit(index_path, config, baseline, args.mode)
     except (OSError, ValueError) as exc:
         print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
         return 2

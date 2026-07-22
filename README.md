@@ -30,7 +30,7 @@
 | `sync-docs-index` | `sync-docs-index/` | 同步文档目录索引和摘要，整理单篇文章 | 更新索引、同步文档摘要、整理文章 |
 | `tap-adapter-author` | `tap-adapter-author/` | 为新站点或命令编写 TAP adapter | 写 TAP adapter、适配新网站 |
 | `web-tech-article-analyzer` | `web-tech-article-analyzer/` | 用 7 层框架分析技术文章、URL、博客和帖子 | 分析技术文章、URL、博客、Reddit、X、WeChat |
-| `wiki-index-audit` | `wiki-index-audit/` | 审计 Markdown Wiki 关键认知召回层，检查腐化和召回质量 | 审计关键认知索引、检查 Wiki 腐化、知识库定期健检 |
+| `wiki-index-audit` | `wiki-index-audit/` | 审计 Markdown Wiki 关键认知召回层，检查结构与语义腐化 | 审计关键认知索引、检查 Wiki 腐化、知识库定期健检 |
 
 ## Skills
 
@@ -375,9 +375,11 @@ OpenAI weekly articles 20260314
 
 ### wiki-index-audit
 
-**用途：** 审计 Markdown LLM Wiki 中 `关键认知索引.md` 这一召回层的质量，覆盖卡片结构、索引膨胀、语义重复、边界模糊、来源失效、跨页面矛盾和真实问题召回命中。
+**用途：** 审计 Markdown LLM Wiki 中 `关键认知索引.md` 这一召回层的质量，覆盖卡片结构、索引膨胀、语义重复、边界模糊、来源失效和跨页面矛盾。已知的真实漏召回、误召回或边界混淆只作为语义审计的可选证据；没有真实案例时不构造离线测试。
 
 它与 `sync-docs-index` 分工：后者负责文档摘要、README 路由和交叉链接的日常同步；本 Skill 负责低频但更重的语义治理。默认运行 `full` 审计但只生成报告——未经用户确认，不合并、删除卡片，不创建专题页，也不改变知识结构。
+
+执行流程为：定位索引、配置和基线 → 运行确定性脚本 → 做语义审计 → 输出带证据的报告 → 用户确认具体变更集后修复并复验。修复若改动卡片标题、适用场景或触发关键词，再使用 2～3 个真实任务表述做临时冒烟检查；只有同类失败反复出现或后果严重时，才考虑专项回归测试。
 
 **适合场景：**
 
@@ -393,7 +395,7 @@ OpenAI weekly articles 20260314
 卡片新增较多，跑一次 full 审计。
 ```
 
-**注意：** 审计和 Automation 运行默认只报告；修复（`fix`）需要用户确认具体变更集，且修复后必须重新运行 full 审计、retrieval eval 和本地 Markdown 链接校验才能更新基线。
+**注意：** 审计和 Automation 运行默认只报告；修复（`fix`）需要用户确认具体变更集，且修复后必须重新运行 full 审计和本地 Markdown 链接校验。若修改了召回字段，还需完成临时冒烟检查；所有计划项都有完成证据后才能更新基线。
 
 ## Repository Layout
 

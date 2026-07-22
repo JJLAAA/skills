@@ -44,10 +44,10 @@ class AuditIndexTest(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def run_audit(self, text: str, *, evals=None, mode="full"):
+    def run_audit(self, text: str, *, mode="full"):
         index = self.root / "关键认知索引.md"
         index.write_text("# 索引\n\n## 使用方式\n说明\n\n" + text, encoding="utf-8")
-        return audit_index.audit(index, self.config, {}, evals or {"evals": []}, mode)
+        return audit_index.audit(index, self.config, {}, mode)
 
     def test_broken_source_is_p0(self):
         report = self.run_audit(card("失效来源", source="missing.md"), mode="quick")
@@ -60,21 +60,6 @@ class AuditIndexTest(unittest.TestCase):
         kinds = {item["kind"] for item in report["findings"]}
         self.assertIn("long_card", kinds)
         self.assertIn("many_keywords", kinds)
-
-    def test_unknown_eval_card_is_p1(self):
-        evals = {
-            "evals": [
-                {
-                    "id": "unknown",
-                    "expected_cards": ["不存在的卡片"],
-                    "must_not_trigger": [],
-                }
-            ]
-        }
-        report = self.run_audit(card("真实卡片"), evals=evals)
-        findings = {(item["severity"], item["kind"]) for item in report["findings"]}
-        self.assertIn(("P1", "unknown_eval_card"), findings)
-        self.assertFalse(report["retrieval_eval"]["valid_references"])
 
     def test_keyword_overlap_only_creates_review_candidate(self):
         left = card("卡片甲").replace("测试、卡片甲", "索引、召回、边界")

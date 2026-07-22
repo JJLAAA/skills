@@ -7,8 +7,7 @@
       "expected_output": "运行确定性脚本和语义复核，按 P0-P3 给出带证据的报告，不自动修复。",
       "files": [
         "关键认知索引.md",
-        ".wiki-audit/config.json",
-        ".wiki-audit/retrieval-evals.json"
+        ".wiki-audit/config.json"
       ]
     },
     {
@@ -24,10 +23,9 @@
     {
       "id": 3,
       "prompt": "上次审计认为两张卡应该合并，帮我直接整理。",
-      "expected_output": "先核对用户是否已经确认具体变更集；只有确认后进入 fix，并在修改后重跑 full、retrieval eval 和 Markdown 链接验证。",
+      "expected_output": "先核对用户是否已经确认具体变更集；只有确认后进入 fix，并在修改后重跑 full 和 Markdown 链接验证；如果修改了召回字段，再用真实问题做临时冒烟检查。",
       "files": [
-        "关键认知索引.md",
-        ".wiki-audit/retrieval-evals.json"
+        "关键认知索引.md"
       ]
     }
   ]
